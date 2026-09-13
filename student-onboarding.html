@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Welcome — SkillBridge AI</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+  body { background: linear-gradient(135deg, #1e1b4b 0%, #312e81 60%, #4c1d95 100%); min-height: 100vh; padding: 30px 16px; }
+  .ob-wrap { max-width: 760px; margin: 0 auto; }
+  .ob-steps { display: flex; align-items: center; justify-content: center; gap: 0; margin-bottom: 28px; }
+  .ob-step { display: flex; flex-direction: column; align-items: center; gap: 6px; color: rgba(255,255,255,.5); }
+  .ob-step .dot { width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,.1); border: 2px solid rgba(255,255,255,.25); display: flex; align-items: center; justify-content: center; font-weight: 700; }
+  .ob-step.active { color: #fff; }
+  .ob-step.active .dot { background: linear-gradient(135deg,#f97316,#fbbf24); border-color: transparent; color: #1e1b4b; }
+  .ob-step.done .dot { background: #10b981; border-color: transparent; color: #fff; }
+  .ob-line { width: 60px; height: 2px; background: rgba(255,255,255,.2); margin: 0 6px; margin-bottom: 22px; }
+  .ob-card { background: #fff; border-radius: 20px; padding: 36px; box-shadow: 0 25px 60px rgba(0,0,0,.3); }
+  .ob-tag { display: inline-flex; align-items: center; gap: 4px; background: #ede9fe; color: #5b21b6; padding: 4px 12px; border-radius: 20px; font-size: .78rem; font-weight: 600; margin: 3px; }
+  .ob-tag button { background: none; border: none; cursor: pointer; color: #7c3aed; font-size: .9rem; line-height: 1; padding: 0 0 0 2px; }
+</style>
+</head>
+<body>
+<div class="ob-wrap">
+  <div class="ob-steps" id="ob-steps"></div>
+  <div class="ob-card" id="ob-card"></div>
+</div>
+
+<script src="data.js"></script>
+<script>
+const student = Auth.requireStudent();
+if (student && student.onboardingComplete !== false) window.location.href = 'student-dashboard.html';
+
+const ONBOARD_QUESTIONS = [
+  'Tell me a little about yourself and your background.',
+  'What are your strongest technical skills, and how did you build them?',
+  'Describe a project you are proud of and the problem it solved.',
+  'How do you approach learning something new that you are unfamiliar with?',
+  'Why are you looking to build your career through SkillBridge AI?'
+];
+
+let obState = { step: 1, skills: [], iState: { current: 0, answers: [], transcript: '', recognition: null, listening: false } };
+
+function renderSteps() {
+  const steps = [ ['1','Profile & Resume'], ['2','AI Interview'], ['3','Result'] ];
+  document.getElementById('ob-steps').innerHTML = steps.map(([n,label], i) => {
+    const num = i + 1;
+    const cls = num < obState.step ? 'done' : (num === obState.step ? 'active' : '');
+    const dotContent = num < obState.step ? '✓' : n;
+    const line = i < steps.length - 1 ? '<div class="ob-line"></div>' : '';
+    return `<div class="ob-step ${cls}"><div class="dot">${dotContent}</div><div style="font-size:.75rem;font-weight:600">${label}</div></div>${line}`;
+  }).join('');
+}
+
+// ---------- STEP 1: Profile & Resume ----------
+function renderProfileStep() {
+  obState.step = 1;
+  renderSteps();
+  document.getElementById('ob-card').innerHTML = `
+    <div style="text-align:center;margin-bottom:24px">
+      <div style="font-size:2.2rem;margin-bottom:6px">👋</div>
+      <h2 style="font-size:1.5rem;font-weight:800">Welcome, ${student.name}!</h2>
+      <p class="text-muted">Let's set up your profile before you get started. This helps us match you with the right internships and jobs.</p>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">College / University *</label><input class="form-control" id="ob-college" placeholder="e.g. MAKAUT"></div>
+      <div class="form-group"><label class="form-label">Course *</label><input class="form-control" id="ob-course" placeholder="e.g. BCA, B.Tech"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Branch / Specialization</label><input class="form-control" id="ob-branch" placeholder="e.g. Computer Science"></div>
+      <div class="form-group"><label class="form-label">Current Year *</label>
+        <select class="form-select" id="ob-year">
+          <option value="">Select year</option>
+          <option>1st Year</option><option>2nd Year</option><option>3rd Year</option><option>4th Year</option><option>Graduated</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">CGPA / Percentage</label><input class="form-control" id="ob-cgpa" placeholder="e.g. 8.2"></div>
+      <div class="form-group"><label class="form-label">Location</label><input class="form-control" id="ob-location" placeholder="e.g. Malda, West Bengal"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Preferred Role</label><input class="form-control" id="ob-role" placeholder="e.g. Frontend Developer"></div>
+    <div class="form-group">
+      <label class="form-label">Technical Skills * (comma separated)</label>
+      <input class="form-control" id="ob-skills-input" placeholder="e.g. JavaScript, React, SQL" onkeydown="if(event.key==='Enter'){event.preventDefault();addSkillsFromInput();}">
+      <div id="ob-skills-list" style="margin-top:8px"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Resume Summary *</label>
+      <textarea class="form-control" id="ob-resume" rows="5" placeholder="Paste your resume text, or briefly summarize your education, skills, projects and experience..."></textarea>
+    </div>
+    <button class="btn btn-primary btn-block btn-lg" onclick="saveProfileStep()" style="margin-top:8px">Save & Continue →</button>
+  `;
+  renderSkillChips();
+}
+
+function addSkillsFromInput() {
+  const input = document.getElementById('ob-skills-input');
+  const parts = input.value.split(',').map(s => s.trim()).filter(Boolean);
+  parts.forEach(p => { if (!obState.skills.includes(p)) obState.skills.push(p); });
+  input.value = '';
+  renderSkillChips();
+}
+
+function removeSkill(i) { obState.skills.splice(i,1); renderSkillChips(); }
+
+function renderSkillChips() {
+  const box = document.getElementById('ob-skills-list');
+  if (!box) return;
+  box.innerHTML = obState.skills.map((s,i) => `<span class="ob-tag">${s}<button onclick="removeSkill(${i})">✕</button></span>`).join('') || `<span class="text-muted text-sm">No skills added yet</span>`;
+}
+
+function saveProfileStep() {
+  addSkillsFromInput();
+  const college = document.getElementById('ob-college').value.trim();
+  const course = document.getElementById('ob-course').value.trim();
+  const year = document.getElementById('ob-year').value;
+  const resume = document.getElementById('ob-resume').value.trim();
+  if (!college || !course || !year || !obState.skills.length || !resume) {
+    showToast('Please fill all required fields (*) including at least one skill', 'error');
+    return;
+  }
+  const students = Storage.getStudents();
+  const idx = students.findIndex(s => s.id === student.id);
+  if (idx >= 0) {
+    students[idx].college = college;
+    students[idx].course = course;
+    students[idx].branch = document.getElementById('ob-branch').value.trim();
+    students[idx].year = year;
+    students[idx].cgpa = document.getElementById('ob-cgpa').value.trim();
+    students[idx].location = document.getElementById('ob-location').value.trim();
+    students[idx].preferredRole = document.getElementById('ob-role').value.trim();
+    students[idx].skills = obState.skills;
+    students[idx].resumeText = resume;
+    students[idx].profileCompletion = 75;
+    Storage.set('sb_students', students);
+    Object.assign(student, students[idx]);
+  }
+  Storage.logActivity('registration', '📄', `${student.name} completed their profile & resume`);
+  showToast('Profile saved! Time for your first AI interview.');
+  renderInterviewIntro();
+}
+
+// ---------- STEP 2: AI Interview ----------
+function renderInterviewIntro() {
+  obState.step = 2;
+  renderSteps();
+  document.getElementById('ob-card').innerHTML = `
+    <div style="text-align:center;padding:12px">
+      <div style="font-size:2.5rem;margin-bottom:10px">🎙️</div>
+      <h2 style="font-size:1.4rem;font-weight:800;margin-bottom:8px">Your Profile Is Ready!</h2>
+      <p class="text-muted" style="margin-bottom:20px">Now let's complete a short AI interview round (${ONBOARD_QUESTIONS.length} questions). Your AI Interview Score will be added to your profile right away.</p>
+      <button class="btn btn-primary btn-lg" onclick="startInterview()">Start Interview →</button>
+    </div>`;
+}
+
+function startInterview() {
+  obState.iState = { current: 0, answers: [], transcript: '', recognition: null, listening: false };
+  renderQuestion();
+}
+
+function renderQuestion() {
+  const q = ONBOARD_QUESTIONS[obState.iState.current];
+  const hasSpeech = 'SpeechRecognition' in window || 'webkitSpeechRecognition' in window;
+  document.getElementById('ob-card').innerHTML = `
+    <div class="interview-panel" style="margin-bottom:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+        <span class="badge" style="background:rgba(255,255,255,.2);color:#fff">Onboarding Interview</span>
+        <span style="font-size:.875rem;opacity:.7">Question ${obState.iState.current+1} of ${ONBOARD_QUESTIONS.length}</span>
+      </div>
+      <div class="interview-avatar">🤖</div>
+      <div style="font-size:.85rem;opacity:.6;margin-bottom:8px">AI Interviewer</div>
+      <div class="interview-question">"${q}"</div>
+      <div id="ai-status" style="font-size:.85rem;opacity:.7;margin-bottom:16px">Click the microphone to answer</div>
+      <button class="mic-btn" id="mic-btn" onclick="toggleListening()" title="Click to speak">🎙️</button>
+      <div id="transcript-box" style="background:rgba(255,255,255,.1);border-radius:10px;padding:12px;margin-top:12px;min-height:60px;font-size:.875rem;text-align:left;display:none">
+        <div style="font-size:.75rem;opacity:.6;margin-bottom:4px">Your Answer:</div>
+        <div id="transcript-text" style="line-height:1.6"></div>
+      </div>
+      ${!hasSpeech ? `<div style="background:rgba(255,165,0,.2);border:1px solid rgba(255,165,0,.4);border-radius:8px;padding:12px;margin-top:12px;font-size:.8rem">⚠️ Voice recognition unavailable. Use text input below.</div>` : ''}
+    </div>
+    ${!hasSpeech ? `<div style="margin-bottom:16px">
+      <label class="form-label">Type your answer:</label>
+      <textarea class="form-control" id="text-answer" rows="4" placeholder="Type your answer here..."></textarea>
+    </div>` : ''}
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-outline" onclick="speakQuestion()">🔊 Repeat Question</button>
+      <button class="btn btn-primary" onclick="nextQuestion()" style="margin-left:auto">
+        ${obState.iState.current < ONBOARD_QUESTIONS.length-1 ? 'Next Question →' : 'Finish Interview ✓'}
+      </button>
+    </div>`;
+  setTimeout(() => speakQuestion(), 500);
+}
+
+function speakQuestion() {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const utt = new SpeechSynthesisUtterance(ONBOARD_QUESTIONS[obState.iState.current]);
+  utt.rate = 0.9; utt.pitch = 1;
+  const status = document.getElementById('ai-status');
+  if (status) status.textContent = '🔊 AI is speaking...';
+  utt.onend = () => { if (status) status.textContent = 'Click the microphone to answer'; };
+  window.speechSynthesis.speak(utt);
+}
+
+function toggleListening() {
+  if (obState.iState.listening) { stopListening(); return; }
+  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRec) { showToast('Voice recognition not supported. Use text input.', 'info'); return; }
+  obState.iState.recognition = new SpeechRec();
+  obState.iState.recognition.continuous = true;
+  obState.iState.recognition.interimResults = true;
+  obState.iState.recognition.lang = 'en-US';
+  obState.iState.recognition.onresult = (e) => {
+    let transcript = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) transcript += e.results[i][0].transcript;
+    obState.iState.transcript = transcript;
+    const box = document.getElementById('transcript-box');
+    const txt = document.getElementById('transcript-text');
+    if (box) box.style.display = 'block';
+    if (txt) txt.textContent = transcript;
+  };
+  obState.iState.recognition.onerror = () => { stopListening(); showToast('Microphone error. Try text input.', 'error'); };
+  obState.iState.recognition.start();
+  obState.iState.listening = true;
+  const btn = document.getElementById('mic-btn');
+  const status = document.getElementById('ai-status');
+  if (btn) { btn.classList.add('listening'); btn.textContent = '⏹️'; }
+  if (status) status.textContent = '🔴 Listening... Click to stop';
+}
+
+function stopListening() {
+  if (obState.iState.recognition) { obState.iState.recognition.stop(); obState.iState.recognition = null; }
+  obState.iState.listening = false;
+  const btn = document.getElementById('mic-btn');
+  const status = document.getElementById('ai-status');
+  if (btn) { btn.classList.remove('listening'); btn.textContent = '🎙️'; }
+  if (status) status.textContent = '✅ Answer recorded. Click Next to continue.';
+}
+
+function nextQuestion() {
+  stopListening();
+  window.speechSynthesis?.cancel();
+  const textAnswer = document.getElementById('text-answer');
+  const answer = obState.iState.transcript || (textAnswer ? textAnswer.value : '') || '[No answer provided]';
+  obState.iState.answers.push({ question: ONBOARD_QUESTIONS[obState.iState.current], answer });
+  obState.iState.transcript = '';
+  if (obState.iState.current < ONBOARD_QUESTIONS.length - 1) {
+    obState.iState.current++;
+    renderQuestion();
+  } else {
+    finishInterview();
+  }
+}
+
+// ---------- STEP 3: Score & Result ----------
+function finishInterview() {
+  obState.step = 3;
+  renderSteps();
+
+  // AI scoring based on answer completeness + a realistic random spread
+  const answered = obState.iState.answers.filter(a => a.answer && a.answer !== '[No answer provided]' && a.answer.length > 3).length;
+  const base = Math.round((answered / ONBOARD_QUESTIONS.length) * 100);
+  const scores = {
+    communication: Math.max(40, Math.min(100, base - 5 + Math.floor(Math.random()*15))),
+    confidence: Math.max(40, Math.min(100, base - 8 + Math.floor(Math.random()*18))),
+    technical: Math.max(40, Math.min(100, base - 3 + Math.floor(Math.random()*15))),
+    clarity: Math.max(40, Math.min(100, base - 6 + Math.floor(Math.random()*16))),
+  };
+  const overall = Math.round(Object.values(scores).reduce((a,b)=>a+b,0) / Object.keys(scores).length);
+
+  const students = Storage.getStudents();
+  const idx = students.findIndex(s => s.id === student.id);
+  if (idx >= 0) {
+    const newInterview = { date: new Date().toISOString().split('T')[0], type: 'Onboarding Interview', score: overall, ...scores };
+    students[idx].interviewHistory = [newInterview, ...(students[idx].interviewHistory||[])];
+    students[idx].interviewScore = overall;
+    students[idx].communicationScore = scores.communication;
+    students[idx].careerScore = Math.round((students[idx].careerScore * 0.4) + (overall * 0.6));
+    students[idx].profileCompletion = 90;
+    students[idx].streak = 1;
+    students[idx].onboardingComplete = true;
+    Storage.set('sb_students', students);
+    Object.assign(student, students[idx]);
+  }
+  Storage.logActivity('interview', '🎤', `${student.name} completed their onboarding interview scoring ${overall}%`);
+
+  document.getElementById('ob-card').innerHTML = `
+    <div style="text-align:center;padding:12px">
+      <div style="font-size:3rem;margin-bottom:8px">🎉</div>
+      <h2 style="font-size:1.5rem;font-weight:800;margin-bottom:4px">You're All Set, ${student.name}!</h2>
+      <div style="font-size:3.5rem;font-weight:900;background:linear-gradient(135deg,#6366f1,#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent">${overall}%</div>
+      <div class="text-muted" style="margin-bottom:20px">Your Onboarding Interview Score</div>
+    </div>
+    <div class="card" style="margin-bottom:20px;box-shadow:none;border:1px solid #e2e8f0">
+      <div class="card-title" style="margin-bottom:16px">📊 Score Breakdown</div>
+      ${Object.entries(scores).map(([k,v])=>`<div style="margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:.875rem;font-weight:600;text-transform:capitalize">${k}</span><span style="font-weight:700;color:${scoreColor(v)}">${v}%</span></div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${v}%;background:${scoreColor(v)}"></div></div>
+      </div>`).join('')}
+    </div>
+    <a href="student-dashboard.html" class="btn btn-primary btn-block btn-lg">Go to My Dashboard →</a>
+  `;
+  showToast(`Onboarding complete! Interview score: ${overall}%`);
+}
+
+if (student && student.onboardingComplete === false) renderProfileStep();
+</script>
+</body>
+</html>

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Skill Passport — SkillBridge AI</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+  .passport { background: linear-gradient(135deg, #1e1b4b, #312e81); color: #fff; border-radius: 20px; padding: 32px; max-width: 600px; margin: 0 auto; }
+  .passport-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; border-bottom: 1px solid rgba(255,255,255,.2); padding-bottom: 20px; }
+  .passport-avatar { width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, #f97316, #fbbf24); display: flex; align-items: center; justify-content: center; font-size: 2rem; }
+  .passport-name { font-size: 1.4rem; font-weight: 800; }
+  .passport-sub { opacity: .7; font-size: .9rem; }
+  .passport-section { margin-bottom: 20px; }
+  .passport-section-title { font-size: .8rem; text-transform: uppercase; letter-spacing: .1em; opacity: .6; margin-bottom: 10px; }
+  .passport-skill { display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.2); padding: 5px 12px; border-radius: 20px; font-size: .8rem; margin: 3px; }
+  .passport-score { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.1); }
+  .passport-score:last-child { border-bottom: none; }
+  .passport-bar { flex: 1; margin: 0 12px; background: rgba(255,255,255,.1); border-radius: 20px; height: 6px; }
+  .passport-bar-fill { height: 6px; border-radius: 20px; background: linear-gradient(90deg, #f97316, #fbbf24); }
+  .verified-badge { display: inline-flex; align-items: center; gap: 4px; background: rgba(16,185,129,.2); border: 1px solid rgba(16,185,129,.4); color: #6ee7b7; padding: 3px 10px; border-radius: 20px; font-size: .75rem; }
+</style>
+</head>
+<body>
+<script src="data.js"></script>
+<script src="layout.js"></script>
+<script>
+const student = buildStudentLayout('Skill Passport', 'passport', '<div id="passport-content"></div>');
+
+function renderPassport() {
+  document.getElementById('passport-content').innerHTML = `
+    <div style="max-width:700px;margin:0 auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+        <div>
+          <h2 style="font-size:1.3rem;font-weight:800">🪪 Digital Skill Passport</h2>
+          <p class="text-muted">Your verified career profile</p>
+        </div>
+        <button class="btn btn-primary" onclick="downloadPassport()">⬇️ Download Passport</button>
+      </div>
+      <div class="passport" id="passport-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+          <div style="font-size:1rem;font-weight:800;opacity:.8">🐯 SkillBridge AI</div>
+          <div class="verified-badge">✓ Verified Profile</div>
+        </div>
+        <div class="passport-header">
+          <div class="passport-avatar">${student.avatar||'👤'}</div>
+          <div>
+            <div class="passport-name">${student.name}</div>
+            <div class="passport-sub">${student.course||'Student'} • ${student.year||''} • ${student.college||''}</div>
+            <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+              <div class="verified-badge">🎯 Career Score: ${student.careerScore}%</div>
+              <div class="verified-badge">🔥 ${student.streak||0} Day Streak</div>
+            </div>
+          </div>
+        </div>
+        <div class="passport-section">
+          <div class="passport-section-title">✅ Verified Skills</div>
+          ${(student.skills||[]).map(s=>`<span class="passport-skill">✓ ${s}</span>`).join('')}
+          ${(student.languages||[]).map(s=>`<span class="passport-skill">✓ ${s}</span>`).join('')}
+        </div>
+        <div class="passport-section">
+          <div class="passport-section-title">📊 Assessment Scores</div>
+          ${[['Technical Skills',student.technicalScore],['Aptitude',student.aptitudeScore],['Communication',student.communicationScore],['Problem Solving',student.problemSolvingScore],['Interview',student.interviewScore]].map(([l,v])=>`
+            <div class="passport-score">
+              <span style="font-size:.85rem;min-width:130px">${l}</span>
+              <div class="passport-bar"><div class="passport-bar-fill" style="width:${v}%"></div></div>
+              <span style="font-size:.85rem;font-weight:700;min-width:36px;text-align:right">${v}%</span>
+            </div>`).join('')}
+        </div>
+        ${(student.certifications||[]).length ? `<div class="passport-section">
+          <div class="passport-section-title">🏆 Certifications</div>
+          ${student.certifications.map(c=>`<div style="display:flex;align-items:center;gap:8px;padding:4px 0"><span style="color:#6ee7b7">✓</span><span style="font-size:.85rem">${c}</span></div>`).join('')}
+        </div>` : ''}
+        ${(student.projects||[]).length ? `<div class="passport-section">
+          <div class="passport-section-title">🚀 Projects</div>
+          ${student.projects.map(p=>`<div style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.1)"><div style="font-size:.85rem;font-weight:700">${p.name}</div><div style="font-size:.75rem;opacity:.7">${p.tech}</div></div>`).join('')}
+        </div>` : ''}
+        <div style="margin-top:20px;padding-top:16px;border-top:1px solid rgba(255,255,255,.2);display:flex;justify-content:space-between;align-items:center">
+          <div style="font-size:.75rem;opacity:.5">Generated: ${new Date().toLocaleDateString()}</div>
+          <div style="font-size:.75rem;opacity:.5">ID: SB-${student.id?.toUpperCase()}</div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:20px">
+        <div class="card-title" style="margin-bottom:12px">📈 Passport Strength</div>
+        <div class="grid-2">
+          ${[['Profile Completion',student.profileCompletion||85],['Skill Verification',Math.min(100,(student.skills||[]).length*12)],['Test Performance',student.aptitudeScore],['Interview Score',student.interviewScore]].map(([l,v])=>`
+            <div>
+              <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span class="text-sm">${l}</span><span style="font-size:.8rem;font-weight:700;color:${scoreColor(v)}">${v}%</span></div>
+              <div class="progress-bar"><div class="progress-fill" style="width:${v}%;background:${scoreColor(v)}"></div></div>
+            </div>`).join('')}
+        </div>
+      </div>
+    </div>`;
+}
+
+function downloadPassport() {
+  showToast('Skill Passport downloaded as PDF! 📄');
+  // In a real app, use html2canvas + jsPDF
+}
+
+renderPassport();
+</script>
+</body>
+</html>

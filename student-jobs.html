@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jobs — SkillBridge AI</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<script src="data.js"></script>
+<script src="layout.js"></script>
+<script>
+const student = buildStudentLayout('Jobs', 'jobs', '<div id="jobs-content"></div>');
+
+let activeTab = 'recommended';
+let searchQuery = '';
+
+function renderJobs() {
+  const opps = Storage.getOpportunities().filter(o => o.type === 'job');
+  const apps = Storage.getApplications().filter(a => a.studentId === student.id);
+  const appliedIds = apps.map(a => a.opportunityId);
+  const withMatch = opps.map(o => ({ ...o, match: calcSkillMatch(student.skills || [], o.skills) })).sort((a,b) => b.match - a.match);
+  let toShow = withMatch.filter(o => !searchQuery || o.title.toLowerCase().includes(searchQuery.toLowerCase()) || o.companyName.toLowerCase().includes(searchQuery.toLowerCase()));
+  if (activeTab === 'applied') toShow = toShow.filter(o => appliedIds.includes(o.id));
+  else if (activeTab === 'saved') toShow = toShow.slice(0,2);
+
+  document.getElementById('jobs-content').innerHTML = `
+    <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+      <div class="search-bar" style="flex:1;min-width:200px">
+        <span class="search-icon">🔍</span>
+        <input type="text" placeholder="Search jobs by role, skill, company..." value="${searchQuery}" oninput="searchQuery=this.value;renderJobs()">
+      </div>
+    </div>
+    <div class="tabs">
+      ${['recommended','all','applied','saved'].map(t=>`<button class="tab ${activeTab===t?'active':''}" onclick="switchTab('${t}')">${{recommended:'🤖 Recommended',all:'🔍 All Jobs',applied:'📄 Applied',saved:'🔖 Saved'}[t]}</button>`).join('')}
+    </div>
+    ${toShow.length === 0 ? `<div class="empty-state"><div class="mascot">🐯</div><h3>No jobs found</h3><p>Try different search terms</p></div>` :
+    `<div class="grid-2">${toShow.map(o => jobCard(o, appliedIds.includes(o.id))).join('')}</div>`}`;
+}
+
+function jobCard(o, applied) {
+  const matchClass = o.match >= 80 ? 'match-high' : o.match >= 65 ? 'match-med' : 'match-low';
+  return `<div class="opportunity-card">
+    <div class="opp-header">
+      <div class="opp-company">
+        <div class="opp-logo">${o.logo}</div>
+        <div>
+          <div class="opp-title">${o.title}</div>
+          <div class="opp-company-name">${o.companyName}</div>
+        </div>
+      </div>
+      <div class="match-badge ${matchClass}">🎯 ${o.match}%</div>
+    </div>
+    <div class="opp-meta">
+      <span>📍 ${o.location}</span>
+      <span>💼 ${o.duration}</span>
+      <span>💰 ${o.salary || o.stipend}</span>
+      <span>👥 ${o.openings} openings</span>
+    </div>
+    <div style="margin-bottom:12px">${o.skills.map(s=>`<span class="skill-tag ${(student.skills||[]).map(x=>x.toLowerCase()).includes(s.toLowerCase())?'matched':'missing'}">${s}</span>`).join('')}</div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-outline btn-sm" onclick="viewJob('${o.id}')">View Details</button>
+      ${applied ? `<span class="badge badge-success" style="padding:8px 14px">✓ Applied</span>` : `<button class="btn btn-primary btn-sm" onclick="applyJob('${o.id}')">Apply Now</button>`}
+    </div>
+  </div>`;
+}
+
+function switchTab(tab) { activeTab = tab; renderJobs(); }
+
+function viewJob(id) {
+  const o = Storage.getOpportunities().find(x => x.id === id);
+  const match = calcSkillMatch(student.skills || [], o.skills);
+  const apps = Storage.getApplications();
+  const applied = apps.some(a => a.studentId === student.id && a.opportunityId === id);
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay open';
+  overlay.innerHTML = `<div class="modal" style="max-width:680px">
+    <div class="modal-header">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="opp-logo">${o.logo}</div>
+        <div><div style="font-weight:700;font-size:1.1rem">${o.title}</div><div class="text-muted text-sm">${o.companyName} • Full Time</div></div>
+      </div>
+      <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">
+        <span class="badge badge-info">📍 ${o.location}</span>
+        <span class="badge badge-success">💰 ${o.salary || o.stipend}</span>
+        <span class="badge badge-purple">👥 ${o.openings} openings</span>
+        <span class="badge badge-gray">📅 Deadline: ${o.deadline}</span>
+      </div>
+      <div class="ai-box" style="margin-bottom:16px">
+        <div class="ai-box-title">🎯 Skill Match: ${match}%</div>
+        <div style="font-size:.875rem">${o.skills.map(s=>`<span class="skill-tag ${(student.skills||[]).map(x=>x.toLowerCase()).includes(s.toLowerCase())?'matched':'missing'}">${s}</span>`).join('')}</div>
+      </div>
+      <p style="font-size:.875rem;color:#374151;margin-bottom:12px">${o.description}</p>
+      <div style="margin-bottom:12px"><strong>Requirements:</strong> <span style="font-size:.875rem;color:#374151">${o.education} | ${o.experience}</span></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="this.closest('.modal-overlay').remove()">Close</button>
+      ${applied ? `<span class="badge badge-success" style="padding:10px 20px">✓ Applied</span>` : `<button class="btn btn-primary" onclick="applyJob('${id}');this.closest('.modal-overlay').remove()">Apply Now →</button>`}
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+}
+
+function applyJob(id) {
+  const apps = Storage.getApplications();
+  if (apps.some(a => a.studentId === student.id && a.opportunityId === id)) { showToast('Already applied!', 'info'); return; }
+  const o = Storage.getOpportunities().find(x => x.id === id);
+  const match = calcSkillMatch(student.skills || [], o.skills);
+  apps.push({ id: 'a' + Date.now(), studentId: student.id, companyId: o.companyId, opportunityId: id, skillMatch: match, careerScore: student.careerScore, testScore: student.testHistory?.[0]?.score || 0, interviewScore: student.interviewScore, status: 'Applied', appliedDate: new Date().toISOString().split('T')[0] });
+  Storage.set('sb_applications', apps);
+  Storage.logActivity('application', '📋', `${student.name} applied to ${o.title} at ${o.companyName}`);
+  showToast(`Applied to ${o.title}! 🎉`);
+  renderJobs();
+}
+
+renderJobs();
+</script>
+</body>
+</html>

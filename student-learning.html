@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Learning — SkillBridge</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+.roadmap-card{border:2px solid #e2e8f0;border-radius:14px;padding:20px;cursor:pointer;transition:all .25s;background:#fff;text-align:center;}
+.roadmap-card:hover{border-color:#6366f1;transform:translateY(-3px);box-shadow:0 8px 24px rgba(99,102,241,.15);}
+.roadmap-card.selected{border-color:#6366f1;background:linear-gradient(135deg,#ede9fe,#dbeafe);}
+.roadmap-card .rm-icon{font-size:2.4rem;margin-bottom:8px;}
+.roadmap-card .rm-title{font-weight:800;font-size:.95rem;color:#1e293b;}
+.roadmap-card .rm-sub{font-size:.75rem;color:#64748b;margin-top:3px;}
+.step-node{display:flex;align-items:flex-start;gap:16px;margin-bottom:0;}
+.step-dot{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:800;color:#fff;flex-shrink:0;margin-top:2px;}
+.step-line{width:2px;background:#e2e8f0;flex-shrink:0;margin-left:17px;height:32px;}
+.step-line.done{background:#10b981;}
+.course-chip{display:inline-flex;align-items:center;gap:6px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:6px 12px;font-size:.8rem;font-weight:600;margin:3px;cursor:pointer;transition:all .2s;}
+.course-chip:hover{background:#ede9fe;border-color:#6366f1;color:#6366f1;}
+</style>
+</head>
+<body>
+<script src="data.js"></script>
+<script src="layout.js"></script>
+<script>
+const student = buildStudentLayout('Learning', 'learning', '<div id="learning-content"></div>');
+
+const COURSES = [
+  { id:'c1', title:'Data Structures & Algorithms', icon:'🌳', difficulty:'Intermediate', time:'20 hrs', progress:35, priority:'high', reason:'Mock test score 58%', modules:['Arrays & Strings','Linked Lists','Stacks & Queues','Trees & Graphs','Dynamic Programming'] },
+  { id:'c2', title:'Communication Skills', icon:'🗣️', difficulty:'Beginner', time:'8 hrs', progress:20, priority:'high', reason:'Interview score 64%', modules:['Public Speaking','Email Writing','Presentation Skills','Group Discussion'] },
+  { id:'c3', title:'Java Programming', icon:'☕', difficulty:'Intermediate', time:'15 hrs', progress:60, priority:'medium', reason:'Skill gap identified', modules:['OOP Concepts','Collections','Exception Handling','Multithreading'] },
+  { id:'c4', title:'React.js', icon:'⚛️', difficulty:'Intermediate', time:'18 hrs', progress:75, priority:'low', reason:'Good progress', modules:['Components','Hooks','State Management','React Router'] },
+  { id:'c5', title:'SQL & Databases', icon:'🗄️', difficulty:'Beginner', time:'10 hrs', progress:45, priority:'medium', reason:'Backend skill gap', modules:['Basic Queries','Joins','Indexes','Stored Procedures'] },
+  { id:'c6', title:'System Design', icon:'🏗️', difficulty:'Advanced', time:'25 hrs', progress:10, priority:'medium', reason:'Career advancement', modules:['Scalability','Load Balancing','Caching','Microservices'] },
+];
+
+let activeTab = 'recommended';
+let activeCourse = null;
+
+function renderLearning() {
+  const recommended = COURSES.filter(c => c.priority === 'high' || c.priority === 'medium');
+  const inProgress = COURSES.filter(c => c.progress > 0 && c.progress < 100);
+
+  document.getElementById('learning-content').innerHTML = `
+    <div class="tabs">
+      ${['recommended','my-courses','skill-gap','roadmap'].map(t=>`<button class="tab ${activeTab===t?'active':''}" onclick="switchTab('${t}')">${{recommended:'🤖 Recommended',['my-courses']:'📚 My Courses',['skill-gap']:'⚠️ Skill Gap',roadmap:'🗺️ Roadmap'}[t]}</button>`).join('')}
+    </div>
+    <div id="tab-content"></div>`;
+  renderTab();
+}
+
+function switchTab(tab) { activeTab = tab; renderLearning(); }
+
+function renderTab() {
+  const el = document.getElementById('tab-content');
+  if (activeTab === 'recommended') {
+    el.innerHTML = `
+      <div class="ai-box" style="margin-bottom:20px">
+        <div class="ai-box-title">🧠 AI Learning Recommendation</div>
+        <p style="font-size:.875rem;color:#374151">Based on your recent performance, here's your personalized learning plan:</p>
+        <div style="display:flex;gap:16px;margin-top:10px;flex-wrap:wrap">
+          <div><span class="badge badge-danger">🔴 High Priority</span> Data Structures, Communication</div>
+          <div><span class="badge badge-warning">🟡 Medium Priority</span> Java, SQL</div>
+          <div><span class="badge badge-success">🟢 Good</span> React, Python</div>
+        </div>
+      </div>
+      <div class="grid-2">
+        ${COURSES.filter(c=>c.priority!=='low').map(c=>courseCard(c)).join('')}
+      </div>`;
+  } else if (activeTab === 'my-courses') {
+    el.innerHTML = `<div class="grid-2">${COURSES.map(c=>courseCard(c)).join('')}</div>`;
+  } else if (activeTab === 'skill-gap') {
+    el.innerHTML = `
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-title" style="margin-bottom:16px">🧠 AI Skill Gap Analysis</div>
+        <div class="grid-2">
+          <div>
+            <div style="font-weight:700;color:#10b981;margin-bottom:10px">✅ You are strong in:</div>
+            ${['React.js','Python','HTML/CSS','Problem Solving'].map(s=>`<div style="display:flex;align-items:center;gap:8px;padding:6px 0"><span style="color:#10b981">✓</span><span>${s}</span></div>`).join('')}
+          </div>
+          <div>
+            <div style="font-weight:700;color:#ef4444;margin-bottom:10px">⚠️ You need improvement in:</div>
+            ${(student.weakAreas||['Communication','Data Structures','Java']).map(s=>`<div style="display:flex;align-items:center;gap:8px;padding:6px 0"><span style="color:#f97316">⚠</span><span>${s}</span></div>`).join('')}
+          </div>
+        </div>
+      </div>
+      <div class="section-title">Skill Progress</div>
+      <div class="card">
+        ${[['Technical Skills',student.technicalScore],['Aptitude',student.aptitudeScore],['Communication',student.communicationScore],['Problem Solving',student.problemSolvingScore],['Interview',student.interviewScore]].map(([l,v])=>`
+          <div style="margin-bottom:14px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:.875rem;font-weight:600">${l}</span><span style="font-weight:700;color:${scoreColor(v)}">${v}%</span></div>
+            <div class="progress-bar"><div class="progress-fill" style="width:${v}%;background:${scoreColor(v)}"></div></div>
+          </div>`).join('')}
+      </div>`;
+  } else if (activeTab === 'roadmap') {
+    el.innerHTML = `
+      <div class="card">
+        <div class="card-title" style="margin-bottom:20px">🗺️ Your Learning Roadmap</div>
+        <div style="position:relative;padding-left:32px">
+          ${[
+            { phase:'Foundation', status:'done', items:['HTML/CSS Basics','JavaScript Fundamentals','Python Basics'] },
+            { phase:'Core Skills', status:'active', items:['Data Structures','Algorithms','OOP Concepts'] },
+            { phase:'Frameworks', status:'active', items:['React.js','Node.js','Express.js'] },
+            { phase:'Advanced', status:'pending', items:['System Design','Cloud Basics','DevOps'] },
+            { phase:'Career Ready', status:'pending', items:['Portfolio Projects','Mock Interviews','Job Applications'] },
+          ].map((p,i)=>`<div style="margin-bottom:24px;position:relative">
+            <div style="position:absolute;left:-32px;top:0;width:20px;height:20px;border-radius:50%;background:${p.status==='done'?'#10b981':p.status==='active'?'#6366f1':'#e2e8f0'};display:flex;align-items:center;justify-content:center;font-size:.7rem;color:#fff;font-weight:700">${p.status==='done'?'✓':i+1}</div>
+            ${i<4?`<div style="position:absolute;left:-23px;top:20px;width:2px;height:calc(100% + 4px);background:${p.status==='done'?'#10b981':'#e2e8f0'}"></div>`:''}
+            <div style="font-weight:700;margin-bottom:8px;color:${p.status==='pending'?'#94a3b8':'#1e293b'}">${p.phase} <span class="badge ${p.status==='done'?'badge-success':p.status==='active'?'badge-purple':'badge-gray'}">${p.status==='done'?'Completed':p.status==='active'?'In Progress':'Upcoming'}</span></div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px">${p.items.map(item=>`<span class="tag">${item}</span>`).join('')}</div>
+          </div>`).join('')}
+        </div>
+      </div>`;
+  }
+}
+
+function courseCard(c) {
+  const priorityBadge = { high: 'badge-danger', medium: 'badge-warning', low: 'badge-success' };
+  return `<div class="card" style="cursor:pointer" onclick="openCourse('${c.id}')">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="font-size:2rem">${c.icon}</div>
+        <div>
+          <div style="font-weight:700">${c.title}</div>
+          <div class="text-muted text-sm">${c.difficulty} • ${c.time}</div>
+        </div>
+      </div>
+      <span class="badge ${priorityBadge[c.priority]}">${c.priority==='high'?'🔴 High':c.priority==='medium'?'🟡 Medium':'🟢 Good'}</span>
+    </div>
+    ${c.reason ? `<div style="font-size:.78rem;color:#64748b;margin-bottom:10px">📌 ${c.reason}</div>` : ''}
+    <div style="margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span class="text-sm">Progress</span><span style="font-size:.8rem;font-weight:700;color:#6366f1">${c.progress}%</span></div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${c.progress}%;background:#6366f1"></div></div>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px">${c.modules.slice(0,3).map(m=>`<span class="tag">${m}</span>`).join('')}${c.modules.length>3?`<span class="tag">+${c.modules.length-3} more</span>`:''}</div>
+    <button class="btn btn-primary btn-sm btn-block" onclick="event.stopPropagation();openCourse('${c.id}')">Continue Learning →</button>
+  </div>`;
+}
+
+function openCourse(id) {
+  const c = COURSES.find(x => x.id === id);
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay open';
+  overlay.innerHTML = `<div class="modal">
+    <div class="modal-header">
+      <div style="display:flex;align-items:center;gap:10px"><span style="font-size:1.5rem">${c.icon}</span><span style="font-weight:700;font-size:1.1rem">${c.title}</span></div>
+      <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+        <span class="badge badge-purple">${c.difficulty}</span>
+        <span class="badge badge-info">⏱️ ${c.time}</span>
+        <span class="badge badge-gray">${c.modules.length} modules</span>
+      </div>
+      <div style="margin-bottom:16px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-weight:600">Overall Progress</span><span style="font-weight:700;color:#6366f1">${c.progress}%</span></div>
+        <div class="progress-bar" style="height:10px"><div class="progress-fill" style="width:${c.progress}%;background:#6366f1"></div></div>
+      </div>
+      <div class="section-title">Modules</div>
+      ${c.modules.map((m,i)=>{
+        const mp = Math.max(0, c.progress - i*15);
+        const done = mp >= 100;
+        return `<div style="display:flex;align-items:center;gap:12px;padding:12px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:8px">
+          <div style="width:28px;height:28px;border-radius:50%;background:${done?'#10b981':mp>0?'#6366f1':'#e2e8f0'};display:flex;align-items:center;justify-content:center;color:#fff;font-size:.75rem;font-weight:700;flex-shrink:0">${done?'✓':i+1}</div>
+          <div style="flex:1"><div style="font-weight:600;font-size:.9rem">${m}</div><div class="progress-bar" style="margin-top:4px"><div class="progress-fill" style="width:${Math.min(100,mp)}%;background:${done?'#10b981':'#6366f1'}"></div></div></div>
+          <button class="btn btn-primary btn-sm" onclick="startModule('${c.id}','${m}',this)">Start</button>
+        </div>`;
+      }).join('')}
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="this.closest('.modal-overlay').remove()">Close</button>
+      <button class="btn btn-primary" onclick="startCourse('${c.id}',this)">Continue Learning →</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+}
+
+function startModule(courseId, module, btn) {
+  btn.textContent = '✓ Done';
+  btn.className = 'btn btn-success btn-sm';
+  const c = COURSES.find(x => x.id === courseId);
+  c.progress = Math.min(100, c.progress + 15);
+  showToast(`Module "${module}" completed! +15% progress`);
+}
+
+function startCourse(id, btn) {
+  const c = COURSES.find(x => x.id === id);
+  c.progress = Math.min(100, c.progress + 10);
+  showToast(`Progress updated for ${c.title}!`);
+  btn.closest('.modal-overlay').remove();
+  renderLearning();
+}
+
+renderLearning();
+</script>
+</body>
+</html>

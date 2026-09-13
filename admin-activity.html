@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Activity Log — Admin — SkillBridge AI</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<script src="data.js"></script>
+<script src="layout.js"></script>
+<script>
+const admin = buildAdminLayout('Activity Log', 'activity', '<div id="admin-activity"></div>');
+let activeFilter = 'all';
+
+const FILTERS = [
+  { id: 'all', label: 'All' },
+  { id: 'registration', label: '🎓 Registrations' },
+  { id: 'login', label: '🔑 Logins' },
+  { id: 'application', label: '📋 Applications' },
+  { id: 'job_post', label: '💼 Job Posts' },
+  { id: 'status_change', label: '⭐ Status Changes' },
+  { id: 'test', label: '📝 Tests' },
+  { id: 'interview', label: '🎤 Interviews' },
+];
+
+function timeAgo(iso) {
+  const diff = Math.max(0, Date.now() - new Date(iso).getTime());
+  const mins = Math.round(diff / 60000);
+  if (mins < 60) return mins <= 1 ? 'just now' : mins + ' min ago';
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return hrs + ' hr ago';
+  return Math.round(hrs / 24) + ' day(s) ago';
+}
+
+function setFilter(f) { activeFilter = f; renderActivity(); }
+
+function renderActivity() {
+  const log = Storage.getActivityLog();
+  const filtered = activeFilter === 'all' ? log : log.filter(a => a.type === activeFilter);
+
+  document.getElementById('admin-activity').innerHTML = `
+    <div style="margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+      <div>
+        <h2 style="font-size:1.5rem;font-weight:800">📜 Platform Activity Log</h2>
+        <p class="text-muted">${filtered.length} of ${log.length} events</p>
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="renderActivity()">🔄 Refresh</button>
+    </div>
+    <div class="tabs" style="margin-bottom:16px;flex-wrap:wrap">
+      ${FILTERS.map(f => `<div class="tab ${activeFilter===f.id?'active':''}" onclick="setFilter('${f.id}')">${f.label}</div>`).join('')}
+    </div>
+    <div class="card">
+      ${filtered.length ? filtered.map(a => `<div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid #f1f5f9">
+        <div style="font-size:1.3rem">${a.icon}</div>
+        <div style="flex:1">
+          <div style="font-size:.9rem;font-weight:600">${a.message}</div>
+          <div style="font-size:.75rem;color:#94a3b8">${timeAgo(a.time)} • ${new Date(a.time).toLocaleString()}</div>
+        </div>
+        <span class="badge badge-gray">${a.type.replace('_',' ')}</span>
+      </div>`).join('') : `<div class="empty-state"><div class="mascot">🐯</div><h3>No activity yet</h3><p>Events will show up here as students and companies use the platform</p></div>`}
+    </div>`;
+}
+
+renderActivity();
+setInterval(renderActivity, 15000);
+</script>
+</body>
+</html>

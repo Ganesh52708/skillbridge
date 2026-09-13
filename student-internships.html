@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Internships — SkillBridge AI</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<script src="data.js"></script>
+<script src="layout.js"></script>
+<script>
+const student = buildStudentLayout('Internships', 'internships', '<div id="intern-content"></div>');
+
+let activeTab = 'recommended';
+let searchQuery = '';
+let filterLocation = '';
+let filterMode = '';
+
+function renderInternships() {
+  const opps = Storage.getOpportunities().filter(o => o.type === 'internship');
+  const apps = Storage.getApplications().filter(a => a.studentId === student.id);
+  const appliedIds = apps.map(a => a.opportunityId);
+
+  let filtered = opps.filter(o => {
+    const matchSearch = !searchQuery || o.title.toLowerCase().includes(searchQuery.toLowerCase()) || o.companyName.toLowerCase().includes(searchQuery.toLowerCase()) || o.skills.some(s => s.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchLoc = !filterLocation || o.location.toLowerCase().includes(filterLocation.toLowerCase());
+    const matchMode = !filterMode || o.location.toLowerCase().includes(filterMode.toLowerCase());
+    return matchSearch && matchLoc && matchMode;
+  });
+
+  const withMatch = filtered.map(o => ({ ...o, match: calcSkillMatch(student.skills || [], o.skills) })).sort((a,b) => b.match - a.match);
+
+  document.getElementById('intern-content').innerHTML = `
+    <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+      <div class="search-bar" style="flex:1;min-width:200px">
+        <span class="search-icon">🔍</span>
+        <input type="text" placeholder="Search internships by role, skill, company..." value="${searchQuery}" oninput="searchQuery=this.value;renderInternships()">
+      </div>
+      <select class="form-control form-select" style="width:150px" onchange="filterLocation=this.value;renderInternships()">
+        <option value="">All Locations</option>
+        <option value="remote">Remote</option>
+        <option value="bangalore">Bangalore</option>
+        <option value="pune">Pune</option>
+        <option value="mumbai">Mumbai</option>
+      </select>
+      <select class="form-control form-select" style="width:130px" onchange="filterMode=this.value;renderInternships()">
+        <option value="">All Modes</option>
+        <option value="remote">Remote</option>
+        <option value="hybrid">Hybrid</option>
+      </select>
+    </div>
+    <div class="tabs">
+      ${['recommended','all','applied','saved'].map(t=>`<button class="tab ${activeTab===t?'active':''}" onclick="switchTab('${t}')">${{recommended:'🤖 Recommended',all:'🔍 All Internships',applied:'📄 Applied',saved:'🔖 Saved'}[t]}</button>`).join('')}
+    </div>
+    <div id="intern-list"></div>`;
+
+  const el = document.getElementById('intern-list');
+  let toShow = withMatch;
+  if (activeTab === 'recommended') toShow = withMatch.filter(o => o.match >= 70);
+  else if (activeTab === 'applied') toShow = withMatch.filter(o => appliedIds.includes(o.id));
+  else if (activeTab === 'saved') toShow = withMatch.slice(0,2);
+
+  if (toShow.length === 0) {
+    el.innerHTML = `<div class="empty-state"><div class="mascot">🐯</div><h3>No internships found</h3><p>Try adjusting your filters or check back later</p></div>`;
+    return;
+  }
+
+  if (activeTab === 'recommended') {
+    el.innerHTML = `<div class="ai-box" style="margin-bottom:16px"><div class="ai-box-title">🤖 AI Matched for You</div><p style="font-size:.875rem;color:#374151">Based on your skills, performance, and career goals</p></div>`;
+  }
+
+  el.innerHTML += `<div class="grid-2">${toShow.map(o => internCard(o, appliedIds.includes(o.id))).join('')}</div>`;
+}
+
+function internCard(o, applied) {
+  const matchClass = o.match >= 80 ? 'match-high' : o.match >= 65 ? 'match-med' : 'match-low';
+  return `<div class="opportunity-card">
+    <div class="opp-header">
+      <div class="opp-company">
+        <div class="opp-logo">${o.logo}</div>
+        <div>
+          <div class="opp-title">${o.title}</div>
+          <div class="opp-company-name">${o.companyName}</div>
+        </div>
+      </div>
+      <div class="match-badge ${matchClass}">🎯 ${o.match}%</div>
+    </div>
+    <div class="opp-meta">
+      <span>📍 ${o.location}</span>
+      <span>⏱️ ${o.duration}</span>
+      <span>💰 ${o.stipend}</span>
+      <span>👥 ${o.openings} openings</span>
+    </div>
+    <div style="margin-bottom:12px">${o.skills.map(s=>`<span class="skill-tag ${(student.skills||[]).map(x=>x.toLowerCase()).includes(s.toLowerCase())?'matched':'missing'}">${s}</span>`).join('')}</div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-outline btn-sm" onclick="viewInternship('${o.id}')">View Details</button>
+      ${applied ? `<span class="badge badge-success" style="padding:8px 14px">✓ Applied</span>` : `<button class="btn btn-primary btn-sm" onclick="applyInternship('${o.id}')">Apply Now</button>`}
+    </div>
+  </div>`;
+}
+
+function switchTab(tab) { activeTab = tab; renderInternships(); }
+
+function viewInternship(id) {
+  const o = Storage.getOpportunities().find(x => x.id === id);
+  const match = calcSkillMatch(student.skills || [], o.skills);
+  const matchedSkills = o.skills.filter(s => (student.skills||[]).map(x=>x.toLowerCase()).includes(s.toLowerCase()));
+  const missingSkills = o.skills.filter(s => !(student.skills||[]).map(x=>x.toLowerCase()).includes(s.toLowerCase()));
+  const apps = Storage.getApplications();
+  const applied = apps.some(a => a.studentId === student.id && a.opportunityId === id);
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay open';
+  overlay.innerHTML = `<div class="modal" style="max-width:680px">
+    <div class="modal-header">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="opp-logo">${o.logo}</div>
+        <div><div style="font-weight:700;font-size:1.1rem">${o.title}</div><div class="text-muted text-sm">${o.companyName}</div></div>
+      </div>
+      <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">
+        <span class="badge badge-info">📍 ${o.location}</span>
+        <span class="badge badge-purple">⏱️ ${o.duration}</span>
+        <span class="badge badge-success">💰 ${o.stipend}</span>
+        <span class="badge badge-gray">📅 Deadline: ${o.deadline}</span>
+      </div>
+      <div class="ai-box" style="margin-bottom:16px">
+        <div class="ai-box-title">🎯 Match Analysis: ${match}%</div>
+        <div style="font-size:.875rem">
+          ${matchedSkills.length ? `<div style="margin-bottom:6px"><strong>✓ Matching skills:</strong> ${matchedSkills.map(s=>`<span class="skill-tag matched">${s}</span>`).join('')}</div>` : ''}
+          ${missingSkills.length ? `<div><strong>⚠️ Missing skills:</strong> ${missingSkills.map(s=>`<span class="skill-tag missing">${s}</span>`).join('')}</div>` : ''}
+        </div>
+      </div>
+      <div style="margin-bottom:12px"><strong>About the Role:</strong><p style="font-size:.875rem;color:#374151;margin-top:4px">${o.description}</p></div>
+      <div style="margin-bottom:12px"><strong>Responsibilities:</strong><ul style="font-size:.875rem;color:#374151;margin-top:4px;padding-left:16px">${o.responsibilities.map(r=>`<li>${r}</li>`).join('')}</ul></div>
+      <div style="margin-bottom:12px"><strong>Eligibility:</strong> <span style="font-size:.875rem;color:#374151">${o.education} | ${o.experience}</span></div>
+      <div class="divider"></div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap">
+        <div><div class="text-muted text-sm">Career Readiness</div><div style="font-weight:700;color:#6366f1">${student.careerScore}%</div></div>
+        <div><div class="text-muted text-sm">Skill Match</div><div style="font-weight:700;color:${scoreColor(match)}">${match}%</div></div>
+        <div><div class="text-muted text-sm">Profile</div><div style="font-weight:700;color:#10b981">${student.profileCompletion || 85}% Complete</div></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="this.closest('.modal-overlay').remove()">Close</button>
+      ${applied ? `<span class="badge badge-success" style="padding:10px 20px">✓ Already Applied</span>` : `<button class="btn btn-primary" onclick="applyInternship('${id}');this.closest('.modal-overlay').remove()">Submit Application →</button>`}
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+}
+
+function applyInternship(id) {
+  const apps = Storage.getApplications();
+  if (apps.some(a => a.studentId === student.id && a.opportunityId === id)) { showToast('Already applied!', 'info'); return; }
+  const o = Storage.getOpportunities().find(x => x.id === id);
+  const match = calcSkillMatch(student.skills || [], o.skills);
+  apps.push({ id: 'a' + Date.now(), studentId: student.id, companyId: o.companyId, opportunityId: id, skillMatch: match, careerScore: student.careerScore, testScore: student.testHistory?.[0]?.score || 0, interviewScore: student.interviewScore, status: 'Applied', appliedDate: new Date().toISOString().split('T')[0] });
+  Storage.set('sb_applications', apps);
+  Storage.logActivity('application', '📋', `${student.name} applied to ${o.title} at ${o.companyName}`);
+  showToast(`Applied to ${o.title} at ${o.companyName}! 🎉`);
+  renderInternships();
+}
+
+renderInternships();
+</script>
+</body>
+</html>

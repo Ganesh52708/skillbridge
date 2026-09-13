@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shortlisted — SkillBridge AI</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+.stage-col{flex:1;min-width:210px;background:#f8fafc;border-radius:14px;padding:14px;}
+.stage-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.stage-label{font-size:.78rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;}
+.stage-count{font-size:.75rem;font-weight:700;padding:2px 10px;border-radius:20px;}
+.p-card{background:#fff;border-radius:10px;padding:12px;margin-bottom:8px;box-shadow:0 1px 4px rgba(0,0,0,.07);cursor:pointer;border-left:3px solid transparent;transition:all .2s;}
+.p-card:hover{box-shadow:0 4px 12px rgba(0,0,0,.1);transform:translateY(-1px);}
+.p-card-name{font-weight:700;font-size:.875rem;}
+.p-card-role{font-size:.72rem;color:#64748b;margin-top:1px;}
+.p-card-scores{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+.p-score-chip{font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:6px;background:#f1f5f9;color:#475569;}
+.p-card-actions{display:flex;gap:5px;margin-top:10px;}
+.stage-applied .p-card{border-left-color:#94a3b8;}
+.stage-review .p-card{border-left-color:#f59e0b;}
+.stage-shortlisted .p-card{border-left-color:#6366f1;}
+.stage-interview .p-card{border-left-color:#8b5cf6;}
+.stage-selected .p-card{border-left-color:#10b981;}
+.stage-hired .p-card{border-left-color:#059669;}
+.stage-rejected .p-card{border-left-color:#ef4444;}
+.pipeline-wrap{display:flex;gap:12px;overflow-x:auto;padding-bottom:12px;}
+.move-arrow{font-size:.7rem;padding:4px 8px;border-radius:6px;border:none;cursor:pointer;font-weight:700;transition:all .2s;}
+</style>
+</head>
+<body>
+<script src="data.js"></script>
+<script src="layout.js"></script>
+<script>
+const company = buildCompanyLayout('Shortlisted & Pipeline', 'shortlisted', '<div id="short-content"></div>');
+
+const STAGES = [
+  { key:'Applied',      label:'Applied',      color:'#94a3b8', bg:'#f1f5f9',      next:'Under Review',  nextLabel:'Move to Review' },
+  { key:'Under Review', label:'Under Review', color:'#f59e0b', bg:'#fef3c7',      next:'Shortlisted',   nextLabel:'Shortlist' },
+  { key:'Shortlisted',  label:'Shortlisted',  color:'#6366f1', bg:'#ede9fe',      next:'Interview',     nextLabel:'Schedule Interview' },
+  { key:'Interview',    label:'Interview',    color:'#8b5cf6', bg:'#f5f3ff',      next:'Selected',      nextLabel:'Select' },
+  { key:'Selected',     label:'Selected',     color:'#10b981', bg:'#d1fae5',      next:'Hired',         nextLabel:'Mark Hired' },
+  { key:'Hired',        label:'Hired 🎉',    color:'#059669', bg:'#a7f3d0',      next:null,            nextLabel:null },
+];
+
+function renderShortlisted() {
+  const apps = Storage.getApplications().filter(a => a.companyId === company.id);
+  const students = Storage.getStudents();
+  const opps = Storage.getOpportunities();
+
+  const enriched = apps.map(a => ({
+    ...a,
+    student: students.find(s => s.id === a.studentId) || {},
+    opp: opps.find(o => o.id === a.opportunityId) || {}
+  }));
+
+  const totalActive = enriched.filter(a => !['Rejected'].includes(a.status)).length;
+  const hired = enriched.filter(a => a.status === 'Hired').length;
+  const shortlisted = enriched.filter(a => ['Shortlisted','Interview','Selected','Hired'].includes(a.status)).length;
+  const interviews = enriched.filter(a => ['Interview','Selected','Hired'].includes(a.status)).length;
+
+  document.getElementById('short-content').innerHTML = `
+    <div class="stats-grid" style="margin-bottom:24px">
+      ${[
+        ['📋', totalActive, 'Active Candidates', '#ede9fe'],
+        ['⭐', shortlisted, 'Shortlisted', '#dbeafe'],
+        ['🎤', interviews, 'Interviews', '#f5f3ff'],
+        ['✅', hired, 'Hired', '#d1fae5'],
+        ['❌', enriched.filter(a=>a.status==='Rejected').length, 'Rejected', '#fee2e2'],
+      ].map(([icon,val,lbl,bg]) => `
+        <div class="stat-card">
+          <div class="stat-icon" style="background:${bg};font-size:1.4rem">${icon}</div>
+          <div class="stat-info"><div class="value">${val}</div><div class="label">${lbl}</div></div>
+        </div>`).join('')}
+    </div>
+
+    <div style="margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+      <div>
+        <div style="font-size:1rem;font-weight:800">Recruitment Pipeline</div>
+        <div class="text-muted text-sm">Drag candidates through stages or use the action buttons</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;font-size:.78rem;color:#64748b">
+        <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#6366f1"></span> Shortlisted &nbsp;
+        <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#8b5cf6"></span> Interview &nbsp;
+        <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#10b981"></span> Selected &nbsp;
+        <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#059669"></span> Hired
+      </div>
+    </div>
+
+    <div class="pipeline-wrap" style="margin-bottom:28px">
+      ${STAGES.map(stage => {
+        const stageApps = enriched.filter(a => a.status === stage.key);
+        return `<div class="stage-col stage-${stage.key.toLowerCase().replace(' ','-')}">
+          <div class="stage-header">
+            <span class="stage-label" style="color:${stage.color}">${stage.label}</span>
+            <span class="stage-count" style="background:${stage.bg};color:${stage.color}">${stageApps.length}</span>
+          </div>
+          ${stageApps.length === 0
+            ? `<div style="text-align:center;padding:20px 0;font-size:.8rem;color:#cbd5e1">No candidates</div>`
+            : stageApps.map(a => `
+              <div class="p-card" onclick="viewCandidate('${a.studentId}','${a.id}')">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between">
+                  <div>
+                    <div class="p-card-name">${a.student.name||'Student'}</div>
+                    <div class="p-card-role">${a.opp.title||'Role'}</div>
+                  </div>
+                  <div style="font-size:1.1rem">${a.student.avatar||'👤'}</div>
+                </div>
+                <div class="p-card-scores">
+                  <span class="p-score-chip" style="background:#ede9fe;color:#5b21b6">🎯 ${a.skillMatch}%</span>
+                  <span class="p-score-chip">📊 ${a.careerScore}%</span>
+                  <span class="p-score-chip">🎤 ${a.interviewScore}%</span>
+                </div>
+                <div class="p-card-actions" onclick="event.stopPropagation()">
+                  ${stage.next ? `<button class="move-arrow" style="background:${stage.bg};color:${stage.color};flex:1" onclick="moveStage('${a.id}','${stage.next}')">${stage.nextLabel} →</button>` : `<span style="font-size:.75rem;color:#059669;font-weight:700">✓ Hired</span>`}
+                  <button class="move-arrow" style="background:#fee2e2;color:#ef4444" onclick="moveStage('${a.id}','Rejected')">✕</button>
+                </div>
+              </div>`).join('')
+          }
+        </div>`;
+      }).join('')}
+
+      <div class="stage-col" style="background:#fff0f0">
+        <div class="stage-header">
+          <span class="stage-label" style="color:#ef4444">Rejected</span>
+          <span class="stage-count" style="background:#fee2e2;color:#ef4444">${enriched.filter(a=>a.status==='Rejected').length}</span>
+        </div>
+        ${enriched.filter(a=>a.status==='Rejected').length === 0
+          ? `<div style="text-align:center;padding:20px 0;font-size:.8rem;color:#cbd5e1">None</div>`
+          : enriched.filter(a=>a.status==='Rejected').map(a=>`
+            <div class="p-card" style="opacity:.6">
+              <div class="p-card-name">${a.student.name||'Student'}</div>
+              <div class="p-card-role">${a.opp.title||'Role'}</div>
+              <div style="margin-top:8px">
+                <button class="move-arrow" style="background:#ede9fe;color:#6366f1;font-size:.7rem" onclick="moveStage('${a.id}','Under Review')">Reconsider</button>
+              </div>
+            </div>`).join('')
+        }
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><span class="card-title">📋 All Candidates Summary</span></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Candidate</th><th>Applied For</th><th>Skill Match</th><th>Career</th><th>Interview</th><th>Stage</th><th>Actions</th></tr></thead>
+          <tbody>
+            ${enriched.filter(a=>a.status!=='Rejected').sort((a,b)=>{
+              const order = ['Hired','Selected','Interview','Shortlisted','Under Review','Applied'];
+              return order.indexOf(a.status) - order.indexOf(b.status);
+            }).map(a => `<tr>
+              <td>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span style="font-size:1.2rem">${a.student.avatar||'👤'}</span>
+                  <div><div style="font-weight:700">${a.student.name||'Student'}</div><div class="text-muted text-sm">${a.student.course||''}</div></div>
+                </div>
+              </td>
+              <td style="font-size:.85rem">${a.opp.title||'N/A'}</td>
+              <td><span style="font-weight:800;color:${scoreColor(a.skillMatch)}">${a.skillMatch}%</span></td>
+              <td>${a.careerScore}%</td>
+              <td>${a.interviewScore}%</td>
+              <td><span class="badge ${statusBadge(a.status)}">${a.status}</span></td>
+              <td>
+                <div style="display:flex;gap:4px;flex-wrap:wrap">
+                  ${STAGES.find(s=>s.key===a.status)?.next ? `<button class="btn btn-primary btn-sm" onclick="moveStage('${a.id}','${STAGES.find(s=>s.key===a.status).next}')">${STAGES.find(s=>s.key===a.status).nextLabel}</button>` : ''}
+                  <button class="btn btn-ghost btn-sm" onclick="viewCandidate('${a.studentId}','${a.id}')">View</button>
+                  <button class="btn btn-danger btn-sm" onclick="moveStage('${a.id}','Rejected')">✕</button>
+                </div>
+              </td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+function moveStage(appId, newStatus) {
+  const apps = Storage.getApplications();
+  const idx = apps.findIndex(a => a.id === appId);
+  if (idx >= 0) {
+    apps[idx].status = newStatus;
+    Storage.set('sb_applications', apps);
+    const s = Storage.getStudents().find(x => x.id === apps[idx].studentId);
+    Storage.logActivity('status_change', '⭐', `${company.name} moved ${s?.name || 'a candidate'} to ${newStatus}`);
+  }
+  const icons = { Hired:'🎉', Selected:'✅', Interview:'🎤', Shortlisted:'⭐', Rejected:'❌' };
+  showToast(`${icons[newStatus]||''} Candidate moved to ${newStatus}!`);
+  renderShortlisted();
+}
+
+function viewCandidate(studentId, appId) {
+  const student = Storage.getStudents().find(s => s.id === studentId);
+  const app = Storage.getApplications().find(a => a.id === appId);
+  const opp = Storage.getOpportunities().find(o => o.id === app?.opportunityId) || {};
+  if (!student) return;
+  const currentStage = STAGES.find(s => s.key === app?.status);
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay open';
+  overlay.innerHTML = `<div class="modal" style="max-width:640px">
+    <div class="modal-header">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:1.5rem">${student.avatar||'👤'}</div>
+        <div>
+          <div style="font-weight:800;font-size:1.05rem">${student.name}</div>
+          <div class="text-muted text-sm">${student.course||''} • ${student.college||''}</div>
+        </div>
+        <span class="badge ${statusBadge(app?.status)}" style="margin-left:auto">${app?.status||''}</span>
+      </div>
+      <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:#f8fafc;border-radius:10px;padding:12px;margin-bottom:14px">
+        <div style="font-size:.78rem;font-weight:700;color:#94a3b8;margin-bottom:6px">APPLIED FOR</div>
+        <div style="font-weight:700">${opp.title||'N/A'}</div>
+        <div class="text-muted text-sm">${opp.location||''} • ${opp.type==='internship'?opp.stipend:opp.salary||''}</div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:14px">
+        ${[['Skill Match',app?.skillMatch||0],['Career',app?.careerScore||0],['Test',app?.testScore||0],['Interview',app?.interviewScore||0]].map(([l,val])=>`
+          <div style="text-align:center;background:#f8fafc;border-radius:10px;padding:10px 14px">
+            <div style="font-size:1.1rem;font-weight:800;color:${scoreColor(val)}">${val}%</div>
+            <div style="font-size:.7rem;color:#94a3b8">${l}</div>
+          </div>`).join('')}
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-bottom:14px">
+        <div class="score-ring">${progressRing(student.technicalScore,60,6)}<span class="label">Technical</span></div>
+        <div class="score-ring">${progressRing(student.communicationScore,60,6)}<span class="label">Comm.</span></div>
+        <div class="score-ring">${progressRing(student.problemSolvingScore,60,6)}<span class="label">Problem</span></div>
+      </div>
+      <div style="font-size:.875rem;margin-bottom:10px">
+        <strong>Education:</strong> ${student.college||'N/A'} • ${student.course||''} • CGPA: ${student.cgpa||'N/A'}
+      </div>
+      <div style="margin-bottom:10px">
+        <strong style="font-size:.875rem">Skills:</strong><br>
+        <div style="margin-top:4px">${(student.skills||[]).map(s=>`<span class="skill-tag" style="font-size:.72rem">${s}</span>`).join('')||'None'}</div>
+      </div>
+      <div style="background:#f8fafc;border-radius:10px;padding:12px">
+        <div style="font-size:.78rem;font-weight:700;color:#94a3b8;margin-bottom:8px">RECRUITMENT JOURNEY</div>
+        <div style="display:flex;align-items:center;gap:0;flex-wrap:wrap">
+          ${STAGES.map((st,i) => {
+            const done = ['Applied','Under Review','Shortlisted','Interview','Selected','Hired'].indexOf(app?.status) >= i;
+            return `<div style="display:flex;align-items:center">
+              <div style="width:28px;height:28px;border-radius:50%;background:${done?st.color:'#e2e8f0'};display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:800;color:#fff;flex-shrink:0">${done?'✓':i+1}</div>
+              <div style="font-size:.65rem;color:${done?st.color:'#94a3b8'};font-weight:600;margin:0 4px;white-space:nowrap">${st.label}</div>
+              ${i<STAGES.length-1?`<div style="width:16px;height:2px;background:${done?'#6366f1':'#e2e8f0'};flex-shrink:0"></div>`:''}
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="this.closest('.modal-overlay').remove()">Close</button>
+      <button class="btn btn-danger btn-sm" onclick="moveStage('${appId}','Rejected');this.closest('.modal-overlay').remove()">❌ Reject</button>
+      ${currentStage?.next ? `<button class="btn btn-primary" onclick="moveStage('${appId}','${currentStage.next}');this.closest('.modal-overlay').remove()">${currentStage.nextLabel} →</button>` : ''}
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+}
+
+renderShortlisted();
+</script>
+</body>
+</html>

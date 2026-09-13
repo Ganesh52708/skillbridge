@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Applications — SkillBridge AI</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<script src="data.js"></script>
+<script src="layout.js"></script>
+<script>
+const student = buildStudentLayout('My Applications', 'applications', '<div id="apps-content"></div>');
+
+function renderApplications() {
+  const apps = Storage.getApplications().filter(a => a.studentId === student.id);
+  const opps = Storage.getOpportunities();
+  const companies = Storage.getCompanies();
+
+  const enriched = apps.map(a => {
+    const o = opps.find(x => x.id === a.opportunityId) || {};
+    const c = companies.find(x => x.id === a.companyId) || {};
+    return { ...a, opp: o, company: c };
+  });
+
+  const stats = { total: enriched.length, shortlisted: enriched.filter(a=>a.status==='Shortlisted').length, interview: enriched.filter(a=>a.status==='Interview').length, selected: enriched.filter(a=>a.status==='Selected'||a.status==='Hired').length };
+
+  document.getElementById('apps-content').innerHTML = `
+    <div class="stats-grid" style="margin-bottom:24px">
+      ${[['📄',stats.total,'Total Applications','#ede9fe'],['⭐',stats.shortlisted,'Shortlisted','#d1fae5'],['🎤',stats.interview,'Interviews','#dbeafe'],['🏆',stats.selected,'Selected','#fef3c7']].map(([i,v,l,bg])=>`
+        <div class="stat-card"><div class="stat-icon" style="background:${bg};font-size:1.4rem">${i}</div><div class="stat-info"><div class="value">${v}</div><div class="label">${l}</div></div></div>`).join('')}
+    </div>
+    ${enriched.length === 0 ? `<div class="empty-state"><div class="mascot">🐯</div><h3>No applications yet</h3><p>Explore recommended internships and start your career journey.</p><a href="student-internships.html" class="btn btn-primary" style="margin-top:16px">Explore Internships →</a></div>` :
+    `<div class="card">
+      <div class="card-header"><span class="card-title">📋 All Applications</span><span class="badge badge-info">${enriched.length} total</span></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Company</th><th>Role</th><th>Type</th><th>Skill Match</th><th>Career Score</th><th>Status</th><th>Applied</th><th>Action</th></tr></thead>
+          <tbody>
+            ${enriched.map(a=>`<tr>
+              <td><div style="display:flex;align-items:center;gap:8px"><span style="font-size:1.2rem">${a.company.logo||'🏢'}</span><span style="font-weight:600">${a.company.name||'Company'}</span></div></td>
+              <td style="font-weight:600">${a.opp.title||'Role'}</td>
+              <td><span class="badge ${a.opp.type==='internship'?'badge-purple':'badge-info'}">${a.opp.type==='internship'?'Internship':'Job'}</span></td>
+              <td><span style="font-weight:700;color:${scoreColor(a.skillMatch)}">${a.skillMatch}%</span></td>
+              <td><span style="font-weight:700;color:${scoreColor(a.careerScore)}">${a.careerScore}%</span></td>
+              <td><span class="badge ${statusBadge(a.status)}">${a.status}</span></td>
+              <td class="text-muted text-sm">${a.appliedDate}</td>
+              <td><button class="btn btn-ghost btn-sm" onclick="viewApp('${a.id}')">View →</button></td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`}
+    <div class="card" style="margin-top:20px">
+      <div class="card-title" style="margin-bottom:16px">📊 Application Pipeline</div>
+      <div class="pipeline">
+        ${['Applied','Under Review','Shortlisted','Interview','Selected'].map(stage=>{
+          const stageApps = enriched.filter(a=>a.status===stage);
+          return `<div class="pipeline-col">
+            <div class="pipeline-col-title">${stage}<span class="badge badge-gray">${stageApps.length}</span></div>
+            ${stageApps.length ? stageApps.map(a=>`<div class="pipeline-card">
+              <div style="font-weight:700;font-size:.85rem">${a.opp.title||'Role'}</div>
+              <div style="font-size:.75rem;color:#64748b">${a.company.name||'Company'}</div>
+              <div style="font-size:.75rem;margin-top:4px;color:${scoreColor(a.skillMatch)}">${a.skillMatch}% match</div>
+            </div>`).join('') : `<div style="font-size:.8rem;color:#94a3b8;text-align:center;padding:12px">No applications</div>`}
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+}
+
+function viewApp(id) {
+  const apps = Storage.getApplications();
+  const a = apps.find(x => x.id === id);
+  const o = Storage.getOpportunities().find(x => x.id === a.opportunityId) || {};
+  const c = Storage.getCompanies().find(x => x.id === a.companyId) || {};
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay open';
+  overlay.innerHTML = `<div class="modal">
+    <div class="modal-header">
+      <div style="font-weight:700">Application Details</div>
+      <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+        <div style="font-size:2rem">${c.logo||'🏢'}</div>
+        <div><div style="font-weight:700;font-size:1.1rem">${o.title||'Role'}</div><div class="text-muted">${c.name||'Company'}</div></div>
+        <span class="badge ${statusBadge(a.status)}" style="margin-left:auto">${a.status}</span>
+      </div>
+      <div class="grid-2" style="margin-bottom:16px">
+        <div class="card" style="text-align:center;padding:16px"><div style="font-size:1.4rem;font-weight:800;color:${scoreColor(a.skillMatch)}">${a.skillMatch}%</div><div class="text-muted text-sm">Skill Match</div></div>
+        <div class="card" style="text-align:center;padding:16px"><div style="font-size:1.4rem;font-weight:800;color:${scoreColor(a.careerScore)}">${a.careerScore}%</div><div class="text-muted text-sm">Career Score</div></div>
+      </div>
+      <div style="font-size:.875rem;color:#374151">
+        <div style="margin-bottom:8px"><strong>Applied:</strong> ${a.appliedDate}</div>
+        <div style="margin-bottom:8px"><strong>Location:</strong> ${o.location||'N/A'}</div>
+        <div style="margin-bottom:8px"><strong>Type:</strong> ${o.type==='internship'?'Internship':'Full Time Job'}</div>
+        ${o.stipend ? `<div style="margin-bottom:8px"><strong>Stipend:</strong> ${o.stipend}</div>` : ''}
+        ${o.salary ? `<div style="margin-bottom:8px"><strong>Salary:</strong> ${o.salary}</div>` : ''}
+      </div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-primary" onclick="this.closest('.modal-overlay').remove()">Close</button></div>
+  </div>`;
+  document.body.appendChild(overlay);
+}
+
+renderApplications();
+</script>
+</body>
+</html>

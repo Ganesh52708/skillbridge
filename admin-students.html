@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Students — Admin — SkillBridge AI</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<script src="data.js"></script>
+<script src="layout.js"></script>
+<script>
+const admin = buildAdminLayout('Students', 'students', '<div id="admin-students"></div>');
+let searchQ = '';
+
+function renderStudents() {
+  const students = Storage.getStudents();
+  const apps = Storage.getApplications();
+  const filtered = students.filter(s => !searchQ || s.name.toLowerCase().includes(searchQ) || (s.email||'').toLowerCase().includes(searchQ) || (s.college||'').toLowerCase().includes(searchQ));
+
+  document.getElementById('admin-students').innerHTML = `
+    <div style="margin-bottom:20px">
+      <h2 style="font-size:1.5rem;font-weight:800">🎓 All Students</h2>
+      <p class="text-muted">${students.length} registered students</p>
+    </div>
+    <div class="search-bar" style="margin-bottom:16px">
+      <input class="form-control" placeholder="Search by name, email, or college..." oninput="searchQ=this.value.toLowerCase();renderStudents()" value="${searchQ}">
+    </div>
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Student</th><th>College</th><th>Career Score</th><th>Applications</th><th>Streak</th><th>Profile</th><th></th></tr></thead>
+          <tbody>
+            ${filtered.map(s => {
+              const appCount = apps.filter(a => a.studentId === s.id).length;
+              return `<tr>
+                <td><div style="display:flex;align-items:center;gap:8px"><span style="font-size:1.3rem">${s.avatar||'👤'}</span><div><div style="font-weight:700">${s.name}</div><div style="font-size:.75rem;color:#64748b">${s.email}</div></div></div></td>
+                <td>${s.college||'—'}<div style="font-size:.75rem;color:#64748b">${s.course||''} ${s.year||''}</div></td>
+                <td><span class="badge ${scoreBadge(s.careerScore||0)}">${s.careerScore||0}%</span></td>
+                <td>${appCount}</td>
+                <td>🔥 ${s.streak||0}</td>
+                <td><div class="progress-bar" style="width:80px"><div class="progress-fill" style="width:${s.profileCompletion||0}%"></div></div></td>
+                <td><button class="btn btn-ghost btn-sm" onclick="viewStudent('${s.id}')">View →</button></td>
+              </tr>`;
+            }).join('') || `<tr><td colspan="7"><div class="empty-state"><p>No students match your search</p></div></td></tr>`}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+function viewStudent(id) {
+  const s = Storage.getStudents().find(x => x.id === id);
+  const apps = Storage.getApplications().filter(a => a.studentId === id);
+  const opps = Storage.getOpportunities();
+  if (!s) return;
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `<div class="modal" style="max-width:600px">
+    <div class="modal-header"><span>${s.avatar||'👤'} ${s.name}</span><span class="modal-close" onclick="this.closest('.modal-overlay').remove()">✕</span></div>
+    <div class="modal-body">
+      <div class="info-grid" style="margin-bottom:16px">
+        <div class="info-item"><div class="key">Email</div>${s.email}</div>
+        <div class="info-item"><div class="key">Phone</div>${s.phone||'—'}</div>
+        <div class="info-item"><div class="key">College</div>${s.college||'—'}</div>
+        <div class="info-item"><div class="key">Course</div>${s.course||'—'} ${s.year||''}</div>
+        <div class="info-item"><div class="key">Location</div>${s.location||'—'}</div>
+        <div class="info-item"><div class="key">CGPA</div>${s.cgpa||'—'}</div>
+      </div>
+      <div class="section-title">Scores</div>
+      <div class="grid-4" style="margin-bottom:16px">
+        ${[['Career',s.careerScore],['Technical',s.technicalScore],['Aptitude',s.aptitudeScore],['Interview',s.interviewScore]].map(([l,v])=>`<div class="card" style="padding:10px;text-align:center"><div style="font-weight:800;color:${scoreColor(v||0)}">${v||0}%</div><div style="font-size:.72rem;color:#64748b">${l}</div></div>`).join('')}
+      </div>
+      <div class="section-title">Skills</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px">${(s.skills||[]).map(k=>`<span class="skill-tag">${k}</span>`).join('') || '<span class="text-muted text-sm">No skills added</span>'}</div>
+      <div class="section-title">Applications (${apps.length})</div>
+      ${apps.length ? apps.map(a => { const o = opps.find(x=>x.id===a.opportunityId)||{}; return `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9"><span>${o.title||'—'} <span class="text-muted text-sm">@ ${o.companyName||''}</span></span><span class="badge ${statusBadge(a.status)}">${a.status}</span></div>`; }).join('') : '<p class="text-muted text-sm">No applications yet</p>'}
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+}
+
+renderStudents();
+</script>
+</body>
+</html>

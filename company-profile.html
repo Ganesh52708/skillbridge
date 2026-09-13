@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Company Profile — SkillBridge AI</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+.section-card{background:#fff;border-radius:12px;box-shadow:0 4px 6px -1px rgba(0,0,0,.07);padding:24px;margin-bottom:20px;}
+.section-card h3{font-size:1rem;font-weight:700;color:#1e293b;margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid #f1f5f9;display:flex;align-items:center;gap:8px;}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.info-item label{display:block;font-size:.75rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;}
+.info-item span{font-size:.9rem;font-weight:600;color:#1e293b;}
+.info-item span.empty{color:#cbd5e1;font-style:italic;font-weight:400;}
+.co-hero{background:linear-gradient(135deg,#1a1a2e,#16213e,#0f3460);border-radius:16px;padding:28px;color:#fff;margin-bottom:20px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;}
+.co-logo-big{width:80px;height:80px;border-radius:16px;background:linear-gradient(135deg,#f97316,#fbbf24);display:flex;align-items:center;justify-content:center;font-size:2.5rem;flex-shrink:0;border:3px solid rgba(255,255,255,.2);}
+@media(max-width:640px){.info-grid{grid-template-columns:1fr;}.co-hero{flex-direction:column;text-align:center;}}
+</style>
+</head>
+<body>
+<script src="data.js"></script>
+<script src="layout.js"></script>
+<script>
+const company = buildCompanyLayout('Company Profile', 'profile', '<div id="co-profile"></div>');
+
+function cv(val){ return val && val!=='' ? `<span>${val}</span>` : `<span class="empty">Not filled</span>`; }
+
+function renderProfile() {
+  const c = company;
+  const opps = Storage.getOpportunities().filter(o => o.companyId === c.id);
+  const apps = Storage.getApplications().filter(a => a.companyId === c.id);
+  const shortlisted = apps.filter(a=>['Shortlisted','Interview','Selected','Hired'].includes(a.status)).length;
+
+  const missingFields = [];
+  if(!c.description) missingFields.push('Company Description');
+  if(!c.location) missingFields.push('Location');
+  if(!c.website) missingFields.push('Website');
+  if(!c.recruiter) missingFields.push('Recruiter Name');
+  if(!c.founded) missingFields.push('Founded Year');
+  if(!c.linkedin) missingFields.push('LinkedIn');
+
+  document.getElementById('co-profile').innerHTML = `
+    <div class="co-hero">
+      <div class="co-logo-big">${c.logo||'🏢'}</div>
+      <div style="flex:1">
+        <div style="font-size:1.5rem;font-weight:900">${c.name}</div>
+        <div style="opacity:.8;margin-top:2px">${c.industry||'Technology'} ${c.size?'• '+c.size+' employees':''}</div>
+        <div style="opacity:.7;font-size:.85rem;margin-top:2px">📍 ${c.location||'Location not set'} &nbsp;|&nbsp; 🌐 ${c.website||'Website not set'}</div>
+        <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">
+          <div style="background:rgba(255,255,255,.15);padding:6px 14px;border-radius:20px;font-size:.85rem;font-weight:700">📊 ${apps.length} Applications</div>
+          <div style="background:rgba(255,255,255,.15);padding:6px 14px;border-radius:20px;font-size:.85rem;font-weight:700">⭐ ${shortlisted} Shortlisted</div>
+          <div style="background:rgba(255,255,255,.15);padding:6px 14px;border-radius:20px;font-size:.85rem;font-weight:700">✅ ${c.hired||0} Hired</div>
+        </div>
+      </div>
+      <button class="btn" style="background:#f97316;color:#fff;align-self:flex-start" onclick="openEditModal()">✏️ Edit Profile</button>
+    </div>
+
+    ${missingFields.length ? `<div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:flex-start;gap:10px">
+      <span style="font-size:1.2rem">⚠️</span>
+      <div><div style="font-weight:700;color:#92400e;margin-bottom:4px">Complete your company profile</div>
+      <div style="font-size:.85rem;color:#78350f">Missing: ${missingFields.join(', ')}</div></div>
+    </div>` : ''}
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
+      <div>
+
+        <div class="section-card">
+          <h3>🏢 Basic Company Information</h3>
+          <div class="info-grid">
+            <div class="info-item"><label>Company Name</label>${cv(c.name)}</div>
+            <div class="info-item"><label>Industry / Sector</label>${cv(c.industry)}</div>
+            <div class="info-item"><label>Company Type</label>${cv(c.companyType)}</div>
+            <div class="info-item"><label>Company Size</label>${cv(c.size)}</div>
+            <div class="info-item"><label>Founded Year</label>${cv(c.founded)}</div>
+            <div class="info-item"><label>Headquarters</label>${cv(c.headquarters)}</div>
+            <div class="info-item"><label>City / Location</label>${cv(c.location)}</div>
+            <div class="info-item"><label>State</label>${cv(c.state)}</div>
+            <div class="info-item" style="grid-column:1/-1"><label>Full Address</label>${cv(c.address)}</div>
+            <div class="info-item"><label>Website</label>${cv(c.website)}</div>
+            <div class="info-item"><label>LinkedIn Page</label>${cv(c.linkedin)}</div>
+            <div class="info-item"><label>Twitter / X</label>${cv(c.twitter)}</div>
+            <div class="info-item"><label>Glassdoor URL</label>${cv(c.glassdoor)}</div>
+          </div>
+        </div>
+
+        <div class="section-card">
+          <h3>📞 Contact & Recruiter Details</h3>
+          <div class="info-grid">
+            <div class="info-item"><label>Recruiter / HR Name</label>${cv(c.recruiter)}</div>
+            <div class="info-item"><label>Recruiter Designation</label>${cv(c.recruiterDesignation)}</div>
+            <div class="info-item"><label>Company Email</label>${cv(c.email)}</div>
+            <div class="info-item"><label>HR Email</label>${cv(c.hrEmail)}</div>
+            <div class="info-item"><label>Phone Number</label>${cv(c.phone)}</div>
+            <div class="info-item"><label>Alternate Phone</label>${cv(c.altPhone)}</div>
+          </div>
+        </div>
+
+        <div class="section-card">
+          <h3>📊 Recruitment Stats</h3>
+          <div class="info-grid">
+            ${[['Total Applications',apps.length],['Shortlisted',shortlisted],['Interviews',apps.filter(a=>['Interview','Selected','Hired'].includes(a.status)).length],['Hired',c.hired||0],['Jobs Posted',opps.filter(o=>o.type==='job').length],['Internships Posted',opps.filter(o=>o.type==='internship').length]].map(([l,val])=>`<div class="info-item"><label>${l}</label><span style="color:#6366f1;font-size:1.1rem">${val}</span></div>`).join('')}
+          </div>
+        </div>
+
+      </div>
+      <div>
+
+        <div class="section-card">
+          <h3>📝 About the Company</h3>
+          <p style="font-size:.9rem;color:#374151;line-height:1.8">${c.description||'<span style="color:#cbd5e1;font-style:italic">No description added yet.</span>'}</p>
+          ${c.mission ? `<div style="margin-top:12px"><div style="font-size:.78rem;font-weight:700;color:#94a3b8;text-transform:uppercase;margin-bottom:4px">Mission</div><p style="font-size:.875rem;color:#374151">${c.mission}</p></div>` : ''}
+          ${c.vision ? `<div style="margin-top:10px"><div style="font-size:.78rem;font-weight:700;color:#94a3b8;text-transform:uppercase;margin-bottom:4px">Vision</div><p style="font-size:.875rem;color:#374151">${c.vision}</p></div>` : ''}
+        </div>
+
+        <div class="section-card">
+          <h3>💼 Work Culture & Benefits</h3>
+          <div class="info-grid">
+            <div class="info-item"><label>Work Mode Offered</label>${cv(c.workModeOffered)}</div>
+            <div class="info-item"><label>Working Hours</label>${cv(c.workingHours)}</div>
+            <div class="info-item"><label>Work Days</label>${cv(c.workDays)}</div>
+            <div class="info-item"><label>Notice Period</label>${cv(c.noticePeriod)}</div>
+            <div class="info-item" style="grid-column:1/-1"><label>Benefits / Perks</label>${cv(c.benefits)}</div>
+            <div class="info-item" style="grid-column:1/-1"><label>Tech Stack Used</label>${cv(c.techStack)}</div>
+          </div>
+        </div>
+
+        <div class="section-card">
+          <h3>🌍 Presence & Offices</h3>
+          <div class="info-grid">
+            <div class="info-item"><label>Office Locations</label>${cv(c.officeLocations)}</div>
+            <div class="info-item"><label>Countries Present</label>${cv(c.countries)}</div>
+            <div class="info-item"><label>GST Number</label>${cv(c.gst)}</div>
+            <div class="info-item"><label>CIN / Registration No</label>${cv(c.cin)}</div>
+          </div>
+        </div>
+
+        <div class="section-card">
+          <h3>📦 Posted Opportunities</h3>
+          ${opps.length ? opps.map(o=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f1f5f9">
+            <span style="font-size:1.3rem">${o.logo}</span>
+            <div style="flex:1">
+              <div style="font-weight:600;font-size:.9rem">${o.title}</div>
+              <div class="text-muted text-sm">${o.location} • ${o.type==='internship'?o.stipend:o.salary}</div>
+            </div>
+            <span class="badge ${o.type==='internship'?'badge-purple':'badge-info'}">${o.type}</span>
+          </div>`).join('') : `<div style="color:#cbd5e1;font-size:.875rem;text-align:center;padding:16px">No opportunities posted yet</div>`}
+          <a href="company-post.html" class="btn btn-primary btn-sm" style="margin-top:12px;display:inline-flex">+ Post New Opportunity</a>
+        </div>
+
+      </div>
+    </div>`;
+}
+
+function openEditModal() {
+  const c = company;
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay open';
+  overlay.innerHTML = `<div class="modal" style="max-width:780px">
+    <div class="modal-header" style="position:sticky;top:0;background:#fff;z-index:10">
+      <span style="font-weight:800;font-size:1.05rem">✏️ Edit Company Profile</span>
+      <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <div style="font-size:.8rem;font-weight:700;color:#6366f1;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">🏢 Basic Information</div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Company Name *</label><input class="form-control" id="ce-name" value="${c.name||''}"></div>
+        <div class="form-group"><label class="form-label">Industry / Sector *</label><input class="form-control" id="ce-industry" value="${c.industry||''}" placeholder="Software, Finance, Healthcare..."></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Company Type</label>
+          <select class="form-control form-select" id="ce-companyType">
+            <option value="">Select</option>
+            ${['Private Limited','Public Limited','Startup','MNC','Government','NGO','Partnership'].map(t=>`<option ${c.companyType===t?'selected':''}>${t}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">Company Size</label>
+          <select class="form-control form-select" id="ce-size">
+            <option value="">Select</option>
+            ${['1-10','11-50','51-200','201-500','500-1000','1000-5000','5000+'].map(s=>`<option ${c.size===s?'selected':''}>${s} employees</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Founded Year</label><input class="form-control" id="ce-founded" value="${c.founded||''}" placeholder="2015"></div>
+        <div class="form-group"><label class="form-label">Headquarters</label><input class="form-control" id="ce-headquarters" value="${c.headquarters||''}" placeholder="Mumbai, India"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">City / Location *</label><input class="form-control" id="ce-location" value="${c.location||''}"></div>
+        <div class="form-group"><label class="form-label">State</label><input class="form-control" id="ce-state" value="${c.state||''}"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Full Address</label><textarea class="form-control" id="ce-address" rows="2">${c.address||''}</textarea></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Office Locations (all cities)</label><input class="form-control" id="ce-officeLocations" value="${c.officeLocations||''}" placeholder="Mumbai, Pune, Bangalore"></div>
+        <div class="form-group"><label class="form-label">Countries Present</label><input class="form-control" id="ce-countries" value="${c.countries||''}" placeholder="India, USA"></div>
+      </div>
+
+      <div style="font-size:.8rem;font-weight:700;color:#6366f1;text-transform:uppercase;letter-spacing:.08em;margin:16px 0 10px">🌐 Online Presence</div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Website URL *</label><input class="form-control" id="ce-website" value="${c.website||''}" placeholder="www.company.com"></div>
+        <div class="form-group"><label class="form-label">LinkedIn Company Page</label><input class="form-control" id="ce-linkedin" value="${c.linkedin||''}" placeholder="linkedin.com/company/..."></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Twitter / X</label><input class="form-control" id="ce-twitter" value="${c.twitter||''}" placeholder="twitter.com/company"></div>
+        <div class="form-group"><label class="form-label">Glassdoor URL</label><input class="form-control" id="ce-glassdoor" value="${c.glassdoor||''}" placeholder="glassdoor.com/..."></div>
+      </div>
+
+      <div style="font-size:.8rem;font-weight:700;color:#6366f1;text-transform:uppercase;letter-spacing:.08em;margin:16px 0 10px">📞 Contact & HR Details</div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Recruiter / HR Name *</label><input class="form-control" id="ce-recruiter" value="${c.recruiter||''}"></div>
+        <div class="form-group"><label class="form-label">Recruiter Designation</label><input class="form-control" id="ce-recruiterDesignation" value="${c.recruiterDesignation||''}" placeholder="HR Manager, Talent Acquisition..."></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Company Email *</label><input class="form-control" id="ce-email" value="${c.email||''}"></div>
+        <div class="form-group"><label class="form-label">HR / Recruitment Email</label><input class="form-control" id="ce-hrEmail" value="${c.hrEmail||''}" placeholder="hr@company.com"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Phone Number</label><input class="form-control" id="ce-phone" value="${c.phone||''}"></div>
+        <div class="form-group"><label class="form-label">Alternate Phone</label><input class="form-control" id="ce-altPhone" value="${c.altPhone||''}"></div>
+      </div>
+
+      <div style="font-size:.8rem;font-weight:700;color:#6366f1;text-transform:uppercase;letter-spacing:.08em;margin:16px 0 10px">📝 About & Culture</div>
+      <div class="form-group"><label class="form-label">Company Description *</label><textarea class="form-control" id="ce-description" rows="4" placeholder="Describe what your company does, your products/services...">${c.description||''}</textarea></div>
+      <div class="form-group"><label class="form-label">Mission Statement</label><textarea class="form-control" id="ce-mission" rows="2" placeholder="Our mission is to...">${c.mission||''}</textarea></div>
+      <div class="form-group"><label class="form-label">Vision Statement</label><textarea class="form-control" id="ce-vision" rows="2" placeholder="Our vision is to...">${c.vision||''}</textarea></div>
+
+      <div style="font-size:.8rem;font-weight:700;color:#6366f1;text-transform:uppercase;letter-spacing:.08em;margin:16px 0 10px">💼 Work Culture</div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Work Mode Offered</label>
+          <select class="form-control form-select" id="ce-workModeOffered">
+            <option value="">Select</option>
+            ${['Remote','On-site','Hybrid','Flexible'].map(m=>`<option ${c.workModeOffered===m?'selected':''}>${m}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">Working Hours</label><input class="form-control" id="ce-workingHours" value="${c.workingHours||''}" placeholder="9 AM - 6 PM"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Work Days</label><input class="form-control" id="ce-workDays" value="${c.workDays||''}" placeholder="Mon - Fri / 5 days"></div>
+        <div class="form-group"><label class="form-label">Notice Period</label><input class="form-control" id="ce-noticePeriod" value="${c.noticePeriod||''}" placeholder="30 days / 60 days"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Benefits & Perks</label><input class="form-control" id="ce-benefits" value="${c.benefits||''}" placeholder="Health insurance, PF, Bonus, Cab..."></div>
+      <div class="form-group"><label class="form-label">Tech Stack Used</label><input class="form-control" id="ce-techStack" value="${c.techStack||''}" placeholder="React, Node.js, AWS, MongoDB..."></div>
+
+      <div style="font-size:.8rem;font-weight:700;color:#6366f1;text-transform:uppercase;letter-spacing:.08em;margin:16px 0 10px">📄 Legal & Registration</div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">GST Number</label><input class="form-control" id="ce-gst" value="${c.gst||''}"></div>
+        <div class="form-group"><label class="form-label">CIN / Registration Number</label><input class="form-control" id="ce-cin" value="${c.cin||''}"></div>
+      </div>
+
+    </div>
+    <div class="modal-footer" style="position:sticky;bottom:0;background:#fff">
+      <button class="btn btn-ghost" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+      <button class="btn btn-primary btn-lg" onclick="saveProfile(this)">✅ Save All Changes</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+}
+
+function saveProfile(btn) {
+  const companies = Storage.getCompanies();
+  const idx = companies.findIndex(c => c.id === company.id);
+  if (idx >= 0) {
+    const fields = ['name','industry','companyType','size','founded','headquarters','location','state','address',
+      'officeLocations','countries','website','linkedin','twitter','glassdoor',
+      'recruiter','recruiterDesignation','email','hrEmail','phone','altPhone',
+      'description','mission','vision','workModeOffered','workingHours','workDays',
+      'noticePeriod','benefits','techStack','gst','cin'];
+    fields.forEach(f => { const el = document.getElementById('ce-'+f); if(el) companies[idx][f] = el.value; });
+    Storage.set('sb_companies', companies);
+    Object.assign(company, companies[idx]);
+  }
+  btn.closest('.modal-overlay').remove();
+  showToast('Company profile saved! 🎉');
+  renderProfile();
+}
+
+renderProfile();
+</script>
+</body>
+</html>

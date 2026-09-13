@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Profile — SkillBridge AI</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+.section-card{background:#fff;border-radius:12px;box-shadow:0 4px 6px -1px rgba(0,0,0,.07);padding:24px;margin-bottom:20px;}
+.section-card h3{font-size:1rem;font-weight:700;color:#1e293b;margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid #f1f5f9;display:flex;align-items:center;gap:8px;}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.info-item label{display:block;font-size:.75rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;}
+.info-item span{font-size:.9rem;font-weight:600;color:#1e293b;}
+.info-item span.empty{color:#cbd5e1;font-style:italic;font-weight:400;}
+.edit-btn{background:none;border:1px solid #e2e8f0;border-radius:8px;padding:5px 12px;font-size:.78rem;font-weight:600;color:#6366f1;cursor:pointer;transition:all .2s;}
+.edit-btn:hover{background:#ede9fe;border-color:#6366f1;}
+.profile-hero{background:linear-gradient(135deg,#1e1b4b,#312e81);border-radius:16px;padding:28px;color:#fff;margin-bottom:20px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;}
+.profile-avatar-big{width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,#f97316,#fbbf24);display:flex;align-items:center;justify-content:center;font-size:2.5rem;flex-shrink:0;border:3px solid rgba(255,255,255,.3);}
+.completion-bar{background:rgba(255,255,255,.15);border-radius:20px;height:8px;margin-top:6px;}
+.completion-fill{height:8px;border-radius:20px;background:linear-gradient(90deg,#f97316,#fbbf24);transition:width 1s ease;}
+.tag-input-wrap{display:flex;flex-wrap:wrap;gap:6px;padding:8px;border:2px solid #e2e8f0;border-radius:8px;min-height:42px;cursor:text;}
+.tag-input-wrap:focus-within{border-color:#6366f1;}
+.tag-chip{display:inline-flex;align-items:center;gap:4px;background:#ede9fe;color:#5b21b6;padding:3px 10px;border-radius:20px;font-size:.78rem;font-weight:600;}
+.tag-chip button{background:none;border:none;cursor:pointer;color:#7c3aed;font-size:.9rem;line-height:1;padding:0;}
+.proj-card{border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:10px;}
+.proj-card:last-child{margin-bottom:0;}
+.add-btn{display:flex;align-items:center;gap:6px;padding:8px 14px;border:2px dashed #c7d2fe;border-radius:8px;background:none;color:#6366f1;font-size:.85rem;font-weight:600;cursor:pointer;width:100%;justify-content:center;margin-top:10px;transition:all .2s;}
+.add-btn:hover{background:#ede9fe;border-color:#6366f1;}
+@media(max-width:640px){.info-grid{grid-template-columns:1fr;}.profile-hero{flex-direction:column;text-align:center;}}
+</style>
+</head>
+<body>
+<script src="data.js"></script>
+<script src="layout.js"></script>
+<script>
+const student = buildStudentLayout('My Profile', 'profile', '<div id="profile-content"></div>');
+
+function v(val){ return val && val!=='' ? `<span>${val}</span>` : `<span class="empty">Not filled</span>`; }
+
+function renderProfile() {
+  const s = student;
+  const completion = s.profileCompletion || 85;
+  const missingFields = [];
+  if(!s.dob) missingFields.push('Date of Birth');
+  if(!s.gender) missingFields.push('Gender');
+  if(!s.address) missingFields.push('Address');
+  if(!s.linkedin) missingFields.push('LinkedIn');
+  if(!s.github) missingFields.push('GitHub');
+  if(!(s.skills||[]).length) missingFields.push('Technical Skills');
+  if(!(s.projects||[]).length) missingFields.push('Projects');
+
+  document.getElementById('profile-content').innerHTML = `
+    <div class="profile-hero">
+      <div class="profile-avatar-big">${s.avatar||'👤'}</div>
+      <div style="flex:1">
+        <div style="font-size:1.5rem;font-weight:900">${s.name}</div>
+        <div style="opacity:.8;margin-top:2px">${s.course||'Student'} ${s.branch?'• '+s.branch:''} • ${s.year||''}</div>
+        <div style="opacity:.7;font-size:.85rem;margin-top:2px">📍 ${s.location||'Location not set'} &nbsp;|&nbsp; 📧 ${s.email}</div>
+        <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">
+          <div style="background:rgba(255,255,255,.15);padding:6px 14px;border-radius:20px;font-size:.85rem;font-weight:700">🎯 Career Score: ${s.careerScore}%</div>
+          <div style="background:rgba(255,255,255,.15);padding:6px 14px;border-radius:20px;font-size:.85rem;font-weight:700">🔥 ${s.streak||0} Day Streak</div>
+          <div style="background:rgba(255,255,255,.15);padding:6px 14px;border-radius:20px;font-size:.85rem;font-weight:700">✅ ${completion}% Complete</div>
+        </div>
+        <div style="margin-top:10px">
+          <div style="font-size:.75rem;opacity:.6;margin-bottom:4px">Profile Completion</div>
+          <div class="completion-bar"><div class="completion-fill" style="width:${completion}%"></div></div>
+        </div>
+      </div>
+      <button class="btn" style="background:#f97316;color:#fff;align-self:flex-start" onclick="openEditModal()">✏️ Edit Profile</button>
+    </div>
+
+    ${missingFields.length ? `<div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:flex-start;gap:10px">
+      <span style="font-size:1.2rem">⚠️</span>
+      <div><div style="font-weight:700;color:#92400e;margin-bottom:4px">Complete your profile to improve visibility</div>
+      <div style="font-size:.85rem;color:#78350f">Missing: ${missingFields.join(', ')}</div></div>
+    </div>` : ''}
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
+      <div>
+
+        <div class="section-card">
+          <h3>👤 Personal Information</h3>
+          <div class="info-grid">
+            <div class="info-item"><label>Full Name</label>${v(s.name)}</div>
+            <div class="info-item"><label>Date of Birth</label>${v(s.dob)}</div>
+            <div class="info-item"><label>Gender</label>${v(s.gender)}</div>
+            <div class="info-item"><label>Phone</label>${v(s.phone)}</div>
+            <div class="info-item"><label>Email</label>${v(s.email)}</div>
+            <div class="info-item"><label>Location / City</label>${v(s.location)}</div>
+            <div class="info-item" style="grid-column:1/-1"><label>Full Address</label>${v(s.address)}</div>
+            <div class="info-item"><label>LinkedIn</label>${v(s.linkedin)}</div>
+            <div class="info-item"><label>GitHub</label>${v(s.github)}</div>
+            <div class="info-item"><label>Portfolio Website</label>${v(s.portfolio)}</div>
+            <div class="info-item"><label>Preferred Work Mode</label>${v(s.workMode)}</div>
+            <div class="info-item"><label>Preferred Location</label>${v(s.preferredLocation)}</div>
+          </div>
+        </div>
+
+        <div class="section-card">
+          <h3>🎓 Education Details</h3>
+          <div style="border-left:3px solid #6366f1;padding-left:14px;margin-bottom:16px">
+            <div style="font-weight:700;font-size:.95rem">${s.college||'<span style="color:#cbd5e1;font-style:italic">College not set</span>'}</div>
+            <div class="info-grid" style="margin-top:10px">
+              <div class="info-item"><label>Course / Degree</label>${v(s.course)}</div>
+              <div class="info-item"><label>Branch / Specialization</label>${v(s.branch)}</div>
+              <div class="info-item"><label>Current Year</label>${v(s.year)}</div>
+              <div class="info-item"><label>CGPA / Percentage</label>${v(s.cgpa)}</div>
+              <div class="info-item"><label>Graduation Year</label>${v(s.graduationYear)}</div>
+              <div class="info-item"><label>University / Board</label>${v(s.university)}</div>
+              <div class="info-item"><label>Admission Year</label>${v(s.admissionYear)}</div>
+              <div class="info-item"><label>Student ID / Roll No</label>${v(s.rollNo)}</div>
+            </div>
+          </div>
+          <div style="border-left:3px solid #8b5cf6;padding-left:14px;margin-bottom:16px">
+            <div style="font-weight:700;font-size:.9rem;margin-bottom:8px">12th Standard</div>
+            <div class="info-grid">
+              <div class="info-item"><label>School Name</label>${v(s.school12)}</div>
+              <div class="info-item"><label>Board</label>${v(s.board12)}</div>
+              <div class="info-item"><label>Percentage / Grade</label>${v(s.pct12 ? s.pct12+'%' : '')}</div>
+              <div class="info-item"><label>Passing Year</label>${v(s.year12)}</div>
+            </div>
+          </div>
+          <div style="border-left:3px solid #f97316;padding-left:14px">
+            <div style="font-weight:700;font-size:.9rem;margin-bottom:8px">10th Standard</div>
+            <div class="info-grid">
+              <div class="info-item"><label>School Name</label>${v(s.school10)}</div>
+              <div class="info-item"><label>Board</label>${v(s.board10)}</div>
+              <div class="info-item"><label>Percentage / Grade</label>${v(s.pct10 ? s.pct10+'%' : '')}</div>
+              <div class="info-item"><label>Passing Year</label>${v(s.year10)}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-card">
+          <h3>📊 Career Scores</h3>
+          ${[['Technical Skills',s.technicalScore],['Aptitude',s.aptitudeScore],['Communication',s.communicationScore],['Problem Solving',s.problemSolvingScore],['Interview',s.interviewScore],['Overall Career',s.careerScore]].map(([l,val])=>`
+            <div style="margin-bottom:12px">
+              <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                <span style="font-size:.875rem;font-weight:600">${l}</span>
+                <span style="font-weight:800;color:${scoreColor(val)}">${val}%</span>
+              </div>
+              <div class="progress-bar"><div class="progress-fill" style="width:${val}%;background:${scoreColor(val)}"></div></div>
+            </div>`).join('')}
+        </div>
+
+      </div>
+      <div>
+
+        <div class="section-card">
+          <h3>⚡ Skills & Technologies</h3>
+          <div style="margin-bottom:14px">
+            <div style="font-size:.78rem;font-weight:700;color:#94a3b8;text-transform:uppercase;margin-bottom:6px">Technical Skills</div>
+            <div>${(s.skills||[]).length ? (s.skills||[]).map(sk=>`<span class="skill-tag">${sk}</span>`).join('') : '<span style="color:#cbd5e1;font-size:.85rem">Not added</span>'}</div>
+          </div>
+          <div style="margin-bottom:14px">
+            <div style="font-size:.78rem;font-weight:700;color:#94a3b8;text-transform:uppercase;margin-bottom:6px">Programming Languages</div>
+            <div>${(s.languages||[]).length ? (s.languages||[]).map(l=>`<span class="skill-tag">${l}</span>`).join('') : '<span style="color:#cbd5e1;font-size:.85rem">Not added</span>'}</div>
+          </div>
+          <div style="margin-bottom:14px">
+            <div style="font-size:.78rem;font-weight:700;color:#94a3b8;text-transform:uppercase;margin-bottom:6px">Frameworks & Tools</div>
+            <div>${(s.frameworks||[]).length ? (s.frameworks||[]).map(f=>`<span class="skill-tag">${f}</span>`).join('') : '<span style="color:#cbd5e1;font-size:.85rem">Not added</span>'}</div>
+          </div>
+          <div>
+            <div style="font-size:.78rem;font-weight:700;color:#94a3b8;text-transform:uppercase;margin-bottom:6px">Soft Skills</div>
+            <div>${(s.softSkills||[]).length ? (s.softSkills||[]).map(sk=>`<span class="skill-tag">${sk}</span>`).join('') : '<span style="color:#cbd5e1;font-size:.85rem">Not added</span>'}</div>
+          </div>
+        </div>
+
+        <div class="section-card">
+          <h3>🚀 Projects</h3>
+          ${(s.projects||[]).length ? s.projects.map((p,i)=>`<div class="proj-card">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start">
+              <div style="font-weight:700;font-size:.95rem">${p.name}</div>
+              <span class="badge badge-purple">Project ${i+1}</span>
+            </div>
+            <div style="font-size:.85rem;color:#374151;margin:6px 0">${p.desc}</div>
+            <div style="font-size:.78rem;font-weight:700;color:#94a3b8;margin-bottom:4px">TECH STACK</div>
+            <div>${p.tech.split(',').map(t=>`<span class="tag">${t.trim()}</span>`).join('')}</div>
+            ${p.link ? `<div style="margin-top:6px;font-size:.8rem"><a href="${p.link}" style="color:#6366f1;font-weight:600">🔗 View Project</a></div>` : ''}
+          </div>`).join('') : '<div style="color:#cbd5e1;font-size:.875rem;text-align:center;padding:16px">No projects added yet</div>'}
+        </div>
+
+        <div class="section-card">
+          <h3>🏆 Certifications</h3>
+          ${(s.certifications||[]).length ? s.certifications.map(c=>`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f1f5f9">
+            <div style="width:28px;height:28px;border-radius:50%;background:#d1fae5;display:flex;align-items:center;justify-content:center;font-size:.85rem;flex-shrink:0">✓</div>
+            <span style="font-size:.875rem;font-weight:600">${c}</span>
+          </div>`).join('') : '<div style="color:#cbd5e1;font-size:.875rem;text-align:center;padding:16px">No certifications added</div>'}
+        </div>
+
+        <div class="section-card">
+          <h3>💼 Professional Details</h3>
+          <div class="info-grid">
+            <div class="info-item"><label>Preferred Job Role</label>${v(s.preferredRole)}</div>
+            <div class="info-item"><label>Preferred Location</label>${v(s.preferredLocation)}</div>
+            <div class="info-item"><label>Work Mode</label>${v(s.workMode)}</div>
+            <div class="info-item"><label>Expected Salary</label>${v(s.expectedSalary)}</div>
+            <div class="info-item"><label>Notice Period</label>${v(s.noticePeriod)}</div>
+            <div class="info-item"><label>Total Experience</label>${v(s.experience)}</div>
+            <div class="info-item" style="grid-column:1/-1"><label>About / Bio</label>${v(s.bio)}</div>
+          </div>
+        </div>
+
+        <div class="section-card">
+          <h3>🏅 Achievements & Extra</h3>
+          <div class="info-grid">
+            <div class="info-item"><label>Achievements / Awards</label>${v(s.achievements)}</div>
+            <div class="info-item"><label>Hobbies / Interests</label>${v(s.hobbies)}</div>
+            <div class="info-item"><label>Languages Known</label>${v(s.languagesKnown)}</div>
+            <div class="info-item"><label>Internship Experience</label>${v(s.internshipExp)}</div>
+            <div class="info-item" style="grid-column:1/-1"><label>Resume Link / Drive URL</label>${v(s.resumeLink)}</div>
+          </div>
+        </div>
+
+      </div>
+    </div>`;
+}
+
+function openEditModal() {
+  const s = student;
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay open';
+  overlay.innerHTML = `<div class="modal" style="max-width:780px">
+    <div class="modal-header" style="position:sticky;top:0;background:#fff;z-index:10">
+      <span style="font-weight:800;font-size:1.05rem">✏️ Edit Full Profile</span>
+      <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <div style="font-size:.8rem;font-weight:700;color:#6366f1;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;margin-top:4px">👤 Personal Information</div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Full Name *</label><input class="form-control" id="e-name" value="${s.name||''}"></div>
+        <div class="form-group"><label class="form-label">Date of Birth</label><input class="form-control" type="date" id="e-dob" value="${s.dob||''}"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Gender</label>
+          <select class="form-control form-select" id="e-gender">
+            <option value="">Select</option>
+            <option ${s.gender==='Male'?'selected':''}>Male</option>
+            <option ${s.gender==='Female'?'selected':''}>Female</option>
+            <option ${s.gender==='Other'?'selected':''}>Other</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">Phone Number *</label><input class="form-control" id="e-phone" value="${s.phone||''}"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">City / Location</label><input class="form-control" id="e-location" value="${s.location||''}"></div>
+        <div class="form-group"><label class="form-label">State</label><input class="form-control" id="e-state" value="${s.state||''}"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Full Address</label><textarea class="form-control" id="e-address" rows="2">${s.address||''}</textarea></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">LinkedIn URL</label><input class="form-control" id="e-linkedin" value="${s.linkedin||''}" placeholder="linkedin.com/in/yourname"></div>
+        <div class="form-group"><label class="form-label">GitHub URL</label><input class="form-control" id="e-github" value="${s.github||''}" placeholder="github.com/yourname"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Portfolio / Personal Website</label><input class="form-control" id="e-portfolio" value="${s.portfolio||''}" placeholder="yourportfolio.com"></div>
+
+      <div style="font-size:.8rem;font-weight:700;color:#6366f1;text-transform:uppercase;letter-spacing:.08em;margin:16px 0 10px">🎓 College / University</div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">College / University Name *</label><input class="form-control" id="e-college" value="${s.college||''}"></div>
+        <div class="form-group"><label class="form-label">University / Affiliating Board</label><input class="form-control" id="e-university" value="${s.university||''}"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Course / Degree *</label><input class="form-control" id="e-course" value="${s.course||''}" placeholder="B.Tech, BCA, MCA..."></div>
+        <div class="form-group"><label class="form-label">Branch / Specialization</label><input class="form-control" id="e-branch" value="${s.branch||''}" placeholder="Computer Science..."></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Current Year / Semester</label>
+          <select class="form-control form-select" id="e-year">
+            <option value="">Select</option>
+            ${['1st Year','2nd Year','3rd Year','4th Year','Graduated'].map(y=>`<option ${s.year===y?'selected':''}>${y}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">CGPA / Percentage</label><input class="form-control" id="e-cgpa" value="${s.cgpa||''}" placeholder="8.5 or 85%"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Admission Year</label><input class="form-control" id="e-admissionYear" value="${s.admissionYear||''}" placeholder="2022"></div>
+        <div class="form-group"><label class="form-label">Graduation Year</label><input class="form-control" id="e-graduationYear" value="${s.graduationYear||''}" placeholder="2026"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Student ID / Roll Number</label><input class="form-control" id="e-rollNo" value="${s.rollNo||''}"></div>
+
+      <div style="font-size:.8rem;font-weight:700;color:#6366f1;text-transform:uppercase;letter-spacing:.08em;margin:16px 0 10px">🏫 12th Standard</div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">School Name</label><input class="form-control" id="e-school12" value="${s.school12||''}"></div>
+        <div class="form-group"><label class="form-label">Board (CBSE / State / ICSE)</label><input class="form-control" id="e-board12" value="${s.board12||''}"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Percentage / Grade</label><input class="form-control" id="e-pct12" value="${s.pct12||''}" placeholder="88"></div>
+        <div class="form-group"><label class="form-label">Passing Year</label><input class="form-control" id="e-year12" value="${s.year12||''}" placeholder="2022"></div>
+      </div>
+
+      <div style="font-size:.8rem;font-weight:700;color:#6366f1;text-transform:uppercase;letter-spacing:.08em;margin:16px 0 10px">🏫 10th Standard</div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">School Name</label><input class="form-control" id="e-school10" value="${s.school10||''}"></div>
+        <div class="form-group"><label class="form-label">Board</label><input class="form-control" id="e-board10" value="${s.board10||''}"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Percentage / Grade</label><input class="form-control" id="e-pct10" value="${s.pct10||''}" placeholder="92"></div>
+        <div class="form-group"><label class="form-label">Passing Year</label><input class="form-control" id="e-year10" value="${s.year10||''}" placeholder="2020"></div>
+      </div>
+
+      <div style="font-size:.8rem;font-weight:700;color:#6366f1;text-transform:uppercase;letter-spacing:.08em;margin:16px 0 10px">⚡ Skills</div>
+      <div class="form-group"><label class="form-label">Technical Skills (comma separated)</label><input class="form-control" id="e-skills" value="${(s.skills||[]).join(', ')}" placeholder="React, Python, SQL..."></div>
+      <div class="form-group"><label class="form-label">Programming Languages (comma separated)</label><input class="form-control" id="e-languages" value="${(s.languages||[]).join(', ')}" placeholder="JavaScript, Python, Java..."></div>
+      <div class="form-group"><label class="form-label">Frameworks & Tools (comma separated)</label><input class="form-control" id="e-frameworks" value="${(s.frameworks||[]).join(', ')}" placeholder="React, Node.js, Docker..."></div>
+      <div class="form-group"><label class="form-label">Soft Skills (comma separated)</label><input class="form-control" id="e-softSkills" value="${(s.softSkills||[]).join(', ')}" placeholder="Communication, Leadership..."></div>
+
+      <div style="font-size:.8rem;font-weight:700;color:#6366f1;text-transform:uppercase;letter-spacing:.08em;margin:16px 0 10px">💼 Professional</div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Preferred Job Role</label><input class="form-control" id="e-role" value="${s.preferredRole||''}" placeholder="Frontend Developer"></div>
+        <div class="form-group"><label class="form-label">Preferred Location</label><input class="form-control" id="e-preferredLocation" value="${s.preferredLocation||''}" placeholder="Pune, Mumbai"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Work Mode</label>
+          <select class="form-control form-select" id="e-mode">
+            <option value="">Select</option>
+            <option ${s.workMode==='Remote'?'selected':''}>Remote</option>
+            <option ${s.workMode==='On-site'?'selected':''}>On-site</option>
+            <option ${s.workMode==='Hybrid'?'selected':''}>Hybrid</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">Expected Salary / Stipend</label><input class="form-control" id="e-expectedSalary" value="${s.expectedSalary||''}" placeholder="₹5-7 LPA"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Total Experience</label><input class="form-control" id="e-experience" value="${s.experience||''}" placeholder="Fresher / 1 year"></div>
+        <div class="form-group"><label class="form-label">Notice Period</label><input class="form-control" id="e-noticePeriod" value="${s.noticePeriod||''}" placeholder="Immediate / 30 days"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Internship Experience</label><textarea class="form-control" id="e-internshipExp" rows="2" placeholder="Company name, role, duration...">${s.internshipExp||''}</textarea></div>
+      <div class="form-group"><label class="form-label">About / Bio</label><textarea class="form-control" id="e-bio" rows="3" placeholder="Write a short bio about yourself...">${s.bio||''}</textarea></div>
+
+      <div style="font-size:.8rem;font-weight:700;color:#6366f1;text-transform:uppercase;letter-spacing:.08em;margin:16px 0 10px">🏅 Extra</div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Achievements / Awards</label><input class="form-control" id="e-achievements" value="${s.achievements||''}" placeholder="Hackathon winner..."></div>
+        <div class="form-group"><label class="form-label">Languages Known</label><input class="form-control" id="e-languagesKnown" value="${s.languagesKnown||''}" placeholder="English, Hindi, Marathi"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Hobbies / Interests</label><input class="form-control" id="e-hobbies" value="${s.hobbies||''}" placeholder="Reading, Coding..."></div>
+        <div class="form-group"><label class="form-label">Resume Link (Google Drive / URL)</label><input class="form-control" id="e-resumeLink" value="${s.resumeLink||''}" placeholder="drive.google.com/..."></div>
+      </div>
+
+    </div>
+    <div class="modal-footer" style="position:sticky;bottom:0;background:#fff">
+      <button class="btn btn-ghost" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+      <button class="btn btn-primary btn-lg" onclick="saveProfile(this)">✅ Save All Changes</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+}
+
+function saveProfile(btn) {
+  const students = Storage.getStudents();
+  const idx = students.findIndex(s => s.id === student.id);
+  if (idx >= 0) {
+    const fields = ['name','dob','gender','phone','location','state','address','linkedin','github','portfolio',
+      'college','university','course','branch','year','cgpa','admissionYear','graduationYear','rollNo',
+      'school12','board12','pct12','year12','school10','board10','pct10','year10',
+      'preferredRole','preferredLocation','workMode','expectedSalary','experience','noticePeriod','internshipExp','bio',
+      'achievements','languagesKnown','hobbies','resumeLink'];
+    fields.forEach(f => { const el = document.getElementById('e-'+f); if(el) students[idx][f] = el.value; });
+    students[idx].skills = document.getElementById('e-skills').value.split(',').map(s=>s.trim()).filter(Boolean);
+    students[idx].languages = document.getElementById('e-languages').value.split(',').map(s=>s.trim()).filter(Boolean);
+    students[idx].frameworks = document.getElementById('e-frameworks').value.split(',').map(s=>s.trim()).filter(Boolean);
+    students[idx].softSkills = document.getElementById('e-softSkills').value.split(',').map(s=>s.trim()).filter(Boolean);
+    const filled = fields.filter(f => students[idx][f] && students[idx][f] !== '').length;
+    students[idx].profileCompletion = Math.min(100, Math.round((filled / fields.length) * 100));
+    Storage.set('sb_students', students);
+    Object.assign(student, students[idx]);
+  }
+  btn.closest('.modal-overlay').remove();
+  showToast('Profile saved successfully! 🎉');
+  renderProfile();
+}
+
+renderProfile();
+</script>
+</body>
+</html>

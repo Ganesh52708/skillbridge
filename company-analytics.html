@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Analytics — SkillBridge AI</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<script src="data.js"></script>
+<script src="layout.js"></script>
+<script>
+const company = buildCompanyLayout('Analytics', 'analytics', '<div id="analytics-content"></div>');
+
+function renderAnalytics() {
+  const apps = Storage.getApplications().filter(a => a.companyId === company.id);
+  const opps = Storage.getOpportunities().filter(o => o.companyId === company.id);
+  const students = Storage.getStudents();
+
+  const total = apps.length;
+  const shortlisted = apps.filter(a=>['Shortlisted','Interview','Selected','Hired'].includes(a.status)).length;
+  const interviews = apps.filter(a=>['Interview','Selected','Hired'].includes(a.status)).length;
+  const hired = apps.filter(a=>a.status==='Hired').length;
+  const avgMatch = total ? Math.round(apps.reduce((s,a)=>s+a.skillMatch,0)/total) : 0;
+  const avgCareer = total ? Math.round(apps.reduce((s,a)=>s+a.careerScore,0)/total) : 0;
+
+  const months = ['Jan','Feb','Mar','Apr','May','Jun'];
+  const monthData = [18,24,32,38,45,total||42];
+  const maxMonth = Math.max(...monthData);
+
+  const skillDist = {};
+  apps.forEach(a => {
+    const s = students.find(x=>x.id===a.studentId);
+    (s?.skills||[]).forEach(sk => { skillDist[sk] = (skillDist[sk]||0)+1; });
+  });
+  const topSkills = Object.entries(skillDist).sort((a,b)=>b[1]-a[1]).slice(0,6);
+
+  document.getElementById('analytics-content').innerHTML = `
+    <div class="stats-grid" style="margin-bottom:24px">
+      ${[
+        ['📋',total,'Total Applications','#ede9fe'],
+        ['⭐',shortlisted,'Shortlisted','#d1fae5'],
+        ['🎤',interviews,'Interviews','#dbeafe'],
+        ['✅',hired,'Hired','#fef3c7'],
+        ['🎯',avgMatch+'%','Avg Skill Match','#f0fdf4'],
+        ['📊',avgCareer+'%','Avg Career Score','#fdf4ff'],
+      ].map(([i,v,l,bg])=>`<div class="stat-card"><div class="stat-icon" style="background:${bg};font-size:1.4rem">${i}</div><div class="stat-info"><div class="value">${v}</div><div class="label">${l}</div></div></div>`).join('')}
+    </div>
+
+    <div class="grid-2" style="margin-bottom:20px">
+      <div class="card">
+        <div class="card-header"><span class="card-title">📈 Applications Over Time</span></div>
+        <div class="chart-area" style="height:160px">
+          ${monthData.map((v,i)=>{
+            const h = Math.round((v/maxMonth)*140);
+            return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1">
+              <div style="font-size:.7rem;color:#64748b;font-weight:600">${v}</div>
+              <div style="height:${h}px;background:${i===monthData.length-1?'linear-gradient(180deg,#6366f1,#8b5cf6)':'#c7d2fe'};width:100%;border-radius:4px 4px 0 0"></div>
+              <div style="font-size:.7rem;color:#94a3b8">${months[i]}</div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">🔄 Hiring Funnel</span></div>
+        <div style="padding:8px 0">
+          ${[['Applied',total,100],['Shortlisted',shortlisted,total?Math.round(shortlisted/total*100):0],['Interview',interviews,total?Math.round(interviews/total*100):0],['Hired',hired,total?Math.round(hired/total*100):0]].map(([l,v,pct])=>`
+            <div style="margin-bottom:12px">
+              <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:.875rem;font-weight:600">${l}</span><span style="font-size:.875rem;font-weight:700">${v} (${pct}%)</span></div>
+              <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:#6366f1"></div></div>
+            </div>`).join('')}
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-2" style="margin-bottom:20px">
+      <div class="card">
+        <div class="card-header"><span class="card-title">⚡ Top Candidate Skills</span></div>
+        ${topSkills.length ? topSkills.map(([skill,count])=>`<div style="margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:3px"><span class="text-sm">${skill}</span><span style="font-size:.8rem;font-weight:700;color:#6366f1">${count} candidates</span></div>
+          <div class="progress-bar"><div class="progress-fill" style="width:${Math.round(count/Math.max(...topSkills.map(s=>s[1]))*100)}%;background:#6366f1"></div></div>
+        </div>`).join('') : '<div class="text-muted text-sm">No data yet</div>'}
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">📊 Score Distribution</span></div>
+        ${[['Avg Skill Match',avgMatch],['Avg Career Score',avgCareer],['Avg Test Score',total?Math.round(apps.reduce((s,a)=>s+a.testScore,0)/total):0],['Avg Interview Score',total?Math.round(apps.reduce((s,a)=>s+a.interviewScore,0)/total):0]].map(([l,v])=>`
+          <div style="margin-bottom:10px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:3px"><span class="text-sm">${l}</span><span style="font-size:.8rem;font-weight:700;color:${scoreColor(v)}">${v}%</span></div>
+            <div class="progress-bar"><div class="progress-fill" style="width:${v}%;background:${scoreColor(v)}"></div></div>
+          </div>`).join('')}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><span class="card-title">💼 Opportunity Performance</span></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Opportunity</th><th>Type</th><th>Applications</th><th>Shortlisted</th><th>Avg Match</th><th>Status</th></tr></thead>
+          <tbody>
+            ${opps.map(o=>{
+              const oppApps = apps.filter(a=>a.opportunityId===o.id);
+              const oppShort = oppApps.filter(a=>['Shortlisted','Interview','Selected','Hired'].includes(a.status)).length;
+              const oppAvgMatch = oppApps.length ? Math.round(oppApps.reduce((s,a)=>s+a.skillMatch,0)/oppApps.length) : 0;
+              return `<tr>
+                <td style="font-weight:600">${o.title}</td>
+                <td><span class="badge ${o.type==='internship'?'badge-purple':'badge-info'}">${o.type}</span></td>
+                <td>${oppApps.length}</td>
+                <td>${oppShort}</td>
+                <td><span style="font-weight:700;color:${scoreColor(oppAvgMatch)}">${oppAvgMatch}%</span></td>
+                <td><span class="badge badge-success">Active</span></td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+renderAnalytics();
+</script>
+</body>
+</html>

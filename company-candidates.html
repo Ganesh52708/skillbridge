@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Candidate Database — SkillBridge AI</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<script src="data.js"></script>
+<script src="layout.js"></script>
+<script>
+const company = buildCompanyLayout('Candidate Database', 'candidates', '<div id="cand-content"></div>');
+let selectedOppId = null;
+let sortBy = 'skillMatch';
+
+function renderCandidates() {
+  const opps = Storage.getOpportunities().filter(o => o.companyId === company.id);
+  const allApps = Storage.getApplications().filter(a => a.companyId === company.id);
+  const students = Storage.getStudents();
+
+  if (!selectedOppId && opps.length > 0) selectedOppId = opps[0].id;
+
+  const oppApps = allApps
+    .filter(a => a.opportunityId === selectedOppId)
+    .map(a => ({ ...a, student: students.find(s => s.id === a.studentId) || {} }))
+    .sort((a, b) => b[sortBy] - a[sortBy]);
+
+  const selectedOpp = opps.find(o => o.id === selectedOppId);
+
+  document.getElementById('cand-content').innerHTML = `
+    <div style="margin-bottom:6px">
+      <h2 style="font-size:1.1rem;font-weight:800">Candidate Database</h2>
+      <p class="text-muted text-sm">Select a posted opportunity to view its applicants</p>
+    </div>
+
+    <div style="display:grid;grid-template-columns:280px 1fr;gap:20px;align-items:start">
+
+      <div>
+        <div style="font-size:.75rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Your Opportunities</div>
+        ${opps.length === 0
+          ? `<div class="empty-state"><p>No opportunities posted yet.</p><a href="company-post.html" class="btn btn-primary btn-sm" style="margin-top:8px">Post First Job</a></div>`
+          : opps.map(o => {
+              const cnt = allApps.filter(a => a.opportunityId === o.id).length;
+              const isActive = selectedOppId === o.id;
+              return `<div onclick="selectedOppId='${o.id}';renderCandidates()" style="
+                background:${isActive ? 'linear-gradient(135deg,#6366f1,#8b5cf6)' : '#fff'};
+                color:${isActive ? '#fff' : '#1e293b'};
+                border-radius:12px;padding:14px 16px;margin-bottom:10px;
+                cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.07);
+                border:2px solid ${isActive ? '#6366f1' : '#e2e8f0'};
+                transition:all .2s;">
+                <div style="display:flex;align-items:center;gap:10px">
+                  <span style="font-size:1.4rem">${o.logo}</span>
+                  <div style="flex:1">
+                    <div style="font-weight:700;font-size:.9rem">${o.title}</div>
+                    <div style="font-size:.75rem;opacity:${isActive?'.8':'.5'}">${o.location}</div>
+                  </div>
+                  <span style="
+                    background:${isActive ? 'rgba(255,255,255,.25)' : '#ede9fe'};
+                    color:${isActive ? '#fff' : '#6366f1'};
+                    padding:3px 10px;border-radius:20px;font-size:.75rem;font-weight:700">${cnt}</span>
+                </div>
+                <div style="margin-top:8px;display:flex;gap:6px">
+                  <span style="font-size:.72rem;background:${isActive?'rgba(255,255,255,.15)':'#f1f5f9'};padding:2px 8px;border-radius:10px">${o.type}</span>
+                  <span style="font-size:.72rem;background:${isActive?'rgba(255,255,255,.15)':'#f1f5f9'};padding:2px 8px;border-radius:10px">${o.type==='internship'?o.stipend:o.salary}</span>
+                </div>
+              </div>`;
+            }).join('')
+        }
+      </div>
+
+      <div>
+        ${selectedOpp ? `
+          <div style="background:#fff;border-radius:12px;padding:16px 20px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.07);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+            <div style="display:flex;align-items:center;gap:12px">
+              <span style="font-size:1.8rem">${selectedOpp.logo}</span>
+              <div>
+                <div style="font-weight:800;font-size:1rem">${selectedOpp.title}</div>
+                <div class="text-muted text-sm">${selectedOpp.companyName} &nbsp;•&nbsp; ${selectedOpp.location} &nbsp;•&nbsp; ${selectedOpp.type==='internship'?selectedOpp.stipend:selectedOpp.salary}</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <span class="badge badge-info">${oppApps.length} Applicants</span>
+              <select class="form-control form-select" style="width:150px;font-size:.8rem" onchange="sortBy=this.value;renderCandidates()">
+                <option value="skillMatch">Sort: Skill Match</option>
+                <option value="careerScore">Sort: Career Score</option>
+                <option value="testScore">Sort: Test Score</option>
+                <option value="interviewScore">Sort: Interview</option>
+              </select>
+            </div>
+          </div>
+
+          ${oppApps.length === 0
+            ? `<div class="empty-state" style="background:#fff;border-radius:12px;padding:48px">
+                <div style="font-size:3rem">🐯</div>
+                <h3>No applicants yet</h3>
+                <p>Candidates who apply for <strong>${selectedOpp.title}</strong> will appear here.</p>
+               </div>`
+            : `<div style="display:flex;flex-direction:column;gap:12px">
+                ${oppApps.map((a, i) => {
+                  const s = a.student;
+                  const matchClass = a.skillMatch >= 80 ? '#d1fae5' : a.skillMatch >= 65 ? '#fef3c7' : '#fee2e2';
+                  const matchText = a.skillMatch >= 80 ? '#065f46' : a.skillMatch >= 65 ? '#92400e' : '#991b1b';
+                  return `<div style="background:#fff;border-radius:12px;padding:16px 20px;box-shadow:0 2px 8px rgba(0,0,0,.07);border:1px solid #e2e8f0;transition:all .2s" onmouseover="this.style.borderColor='#6366f1'" onmouseout="this.style.borderColor='#e2e8f0'">
+                    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+                      <div style="font-size:1.1rem;font-weight:800;color:#94a3b8;min-width:28px">#${i+1}</div>
+                      <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0">${s.avatar||'👤'}</div>
+                      <div style="flex:1;min-width:140px">
+                        <div style="font-weight:700;font-size:.95rem">${s.name||'Student'}</div>
+                        <div style="font-size:.78rem;color:#64748b">${s.course||''} ${s.branch?'• '+s.branch:''}</div>
+                        <div style="font-size:.75rem;color:#94a3b8">${s.college||''}</div>
+                      </div>
+                      <div style="display:flex;gap:10px;flex-wrap:wrap">
+                        <div style="text-align:center">
+                          <div style="font-size:1rem;font-weight:800;color:${matchText};background:${matchClass};padding:4px 10px;border-radius:8px">${a.skillMatch}%</div>
+                          <div style="font-size:.68rem;color:#94a3b8;margin-top:2px">Skill Match</div>
+                        </div>
+                        <div style="text-align:center">
+                          <div style="font-size:1rem;font-weight:800;color:${scoreColor(a.careerScore)}">${a.careerScore}%</div>
+                          <div style="font-size:.68rem;color:#94a3b8">Career</div>
+                        </div>
+                        <div style="text-align:center">
+                          <div style="font-size:1rem;font-weight:800;color:${scoreColor(a.testScore)}">${a.testScore}%</div>
+                          <div style="font-size:.68rem;color:#94a3b8">Test</div>
+                        </div>
+                        <div style="text-align:center">
+                          <div style="font-size:1rem;font-weight:800;color:${scoreColor(a.interviewScore)}">${a.interviewScore}%</div>
+                          <div style="font-size:.68rem;color:#94a3b8">Interview</div>
+                        </div>
+                      </div>
+                      <span class="badge ${statusBadge(a.status)}">${a.status}</span>
+                      <button class="btn btn-primary btn-sm" onclick="viewCandidate('${s.id}','${a.id}')">View Profile →</button>
+                    </div>
+                  </div>`;
+                }).join('')}
+               </div>`
+          }
+        ` : `<div class="empty-state" style="background:#fff;border-radius:12px;padding:48px"><p>Select an opportunity from the left to view candidates.</p></div>`}
+      </div>
+    </div>`;
+}
+
+function viewCandidate(studentId, appId) {
+  const student = Storage.getStudents().find(s => s.id === studentId);
+  const app = Storage.getApplications().find(a => a.id === appId);
+  const opp = Storage.getOpportunities().find(o => o.id === app?.opportunityId) || {};
+  if (!student) return;
+  const matchedSkills = (opp.skills||[]).filter(sk => (student.skills||[]).map(x=>x.toLowerCase()).includes(sk.toLowerCase()));
+  const missingSkills = (opp.skills||[]).filter(sk => !(student.skills||[]).map(x=>x.toLowerCase()).includes(sk.toLowerCase()));
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay open';
+  overlay.innerHTML = `<div class="modal" style="max-width:700px">
+    <div class="modal-header">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:1.6rem">${student.avatar||'👤'}</div>
+        <div>
+          <div style="font-weight:800;font-size:1.1rem">${student.name}</div>
+          <div class="text-muted text-sm">${student.course||''} • ${student.college||''}</div>
+          <div class="text-muted text-sm">📍 ${student.location||'N/A'} &nbsp;•&nbsp; 📧 ${student.email}</div>
+        </div>
+      </div>
+      <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-bottom:16px">
+        ${[['Career',app?.careerScore||student.careerScore],['Skill Match',app?.skillMatch||0],['Test',app?.testScore||0],['Interview',app?.interviewScore||student.interviewScore]].map(([l,val])=>`
+          <div style="text-align:center;background:#f8fafc;border-radius:10px;padding:10px 16px">
+            <div style="font-size:1.2rem;font-weight:800;color:${scoreColor(val)}">${val}%</div>
+            <div style="font-size:.72rem;color:#94a3b8;margin-top:2px">${l}</div>
+          </div>`).join('')}
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:14px;justify-content:center">
+        <div class="score-ring">${progressRing(student.technicalScore,64,7)}<span class="label">Technical</span></div>
+        <div class="score-ring">${progressRing(student.aptitudeScore,64,7)}<span class="label">Aptitude</span></div>
+        <div class="score-ring">${progressRing(student.communicationScore,64,7)}<span class="label">Comm.</span></div>
+        <div class="score-ring">${progressRing(student.problemSolvingScore,64,7)}<span class="label">Problem</span></div>
+      </div>
+      ${matchedSkills.length||missingSkills.length ? `<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:12px;margin-bottom:12px">
+        <div style="font-weight:700;font-size:.85rem;margin-bottom:6px">🎯 Skill Match for <em>${opp.title||'this role'}</em></div>
+        ${matchedSkills.length?`<div style="margin-bottom:4px;font-size:.8rem">✅ Matched: ${matchedSkills.map(s=>`<span class="skill-tag matched">${s}</span>`).join('')}</div>`:''}
+        ${missingSkills.length?`<div style="font-size:.8rem">⚠️ Missing: ${missingSkills.map(s=>`<span class="skill-tag missing">${s}</span>`).join('')}</div>`:''}
+      </div>` : ''}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+        <div>
+          <div style="font-weight:700;font-size:.85rem;margin-bottom:6px">🎓 Education</div>
+          <div style="font-size:.85rem;color:#374151;line-height:1.7">${student.college||'N/A'}<br>${student.course||''} ${student.branch?'• '+student.branch:''}<br>CGPA: ${student.cgpa||'N/A'} • ${student.year||''}</div>
+        </div>
+        <div>
+          <div style="font-weight:700;font-size:.85rem;margin-bottom:6px">⚡ Skills</div>
+          <div>${(student.skills||[]).map(s=>`<span class="skill-tag" style="font-size:.72rem">${s}</span>`).join('')||'<span class="text-muted text-sm">None</span>'}</div>
+        </div>
+      </div>
+      ${(student.projects||[]).length?`<div style="margin-bottom:12px"><div style="font-weight:700;font-size:.85rem;margin-bottom:6px">🚀 Projects</div>${student.projects.map(p=>`<div style="font-size:.85rem;padding:6px 0;border-bottom:1px solid #f1f5f9"><strong>${p.name}</strong> — <span style="color:#64748b">${p.desc}</span><br><span style="font-size:.75rem;color:#94a3b8">${p.tech}</span></div>`).join('')}</div>`:''}
+      ${(student.certifications||[]).length?`<div style="margin-bottom:12px"><div style="font-weight:700;font-size:.85rem;margin-bottom:6px">🏆 Certifications</div>${student.certifications.map(c=>`<div style="font-size:.85rem;padding:3px 0">✓ ${c}</div>`).join('')}</div>`:''}
+      ${student.testHistory?.length?`<div><div style="font-weight:700;font-size:.85rem;margin-bottom:6px">📝 Recent Tests</div>${student.testHistory.slice(0,3).map(t=>`<div style="display:flex;justify-content:space-between;font-size:.85rem;padding:4px 0;border-bottom:1px solid #f1f5f9"><span>${t.test}</span><span class="badge ${scoreBadge(t.score)}">${t.score}%</span></div>`).join('')}</div>`:''}
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="this.closest('.modal-overlay').remove()">Close</button>
+      ${app?.status==='Applied'||app?.status==='Under Review' ? `<button class="btn btn-danger btn-sm" onclick="updateStatus('${appId}','Rejected');this.closest('.modal-overlay').remove()">Reject</button>` : ''}
+      ${app?.status!=='Shortlisted'&&app?.status!=='Interview'&&app?.status!=='Selected'&&app?.status!=='Hired'&&app ? `<button class="btn btn-success" onclick="updateStatus('${appId}','Shortlisted');this.closest('.modal-overlay').remove()">⭐ Shortlist</button>` : ''}
+      ${app?.status==='Shortlisted' ? `<button class="btn btn-primary" onclick="updateStatus('${appId}','Interview');this.closest('.modal-overlay').remove()">🎤 Move to Interview</button>` : ''}
+      ${app?.status==='Interview' ? `<button class="btn btn-success" onclick="updateStatus('${appId}','Selected');this.closest('.modal-overlay').remove()">✅ Select</button>` : ''}
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+}
+
+function updateStatus(appId, status) {
+  const apps = Storage.getApplications();
+  const idx = apps.findIndex(a => a.id === appId);
+  if (idx >= 0) {
+    apps[idx].status = status;
+    Storage.set('sb_applications', apps);
+    const s = Storage.getStudents().find(x => x.id === apps[idx].studentId);
+    Storage.logActivity('status_change', '⭐', `${company.name} marked ${s?.name || 'a candidate'} as ${status}`);
+  }
+  showToast(`Candidate ${status.toLowerCase()}!`);
+  renderCandidates();
+}
+
+renderCandidates();
+</script>
+</body>
+</html>

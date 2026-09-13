@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Student Dashboard — SkillBridge AI</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<script src="data.js"></script>
+<script src="layout.js"></script>
+<script>
+const student = buildStudentLayout('Dashboard', 'dashboard', '<div id="dash-content">Loading...</div>');
+
+function renderDashboard() {
+  const apps = Storage.getApplications().filter(a => a.studentId === student.id);
+  const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const scores = student.scoreHistory || [72,74,73,76,75,78,78];
+  const maxScore = Math.max(...scores);
+
+  const barsHTML = scores.map((s, i) => {
+    const h = Math.round((s / 100) * 120);
+    return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1">
+      <div style="font-size:.7rem;color:#64748b;font-weight:600">${s}%</div>
+      <div class="bar" style="height:${h}px;background:${s===maxScore?'linear-gradient(180deg,#6366f1,#8b5cf6)':'#c7d2fe'};width:100%"></div>
+      <div style="font-size:.7rem;color:#94a3b8">${days[i]}</div>
+    </div>`;
+  }).join('');
+
+  const weakColors = { 'Communication': '#ef4444', 'Data Structures': '#f97316', 'Java': '#f59e0b', 'Frontend': '#f97316', 'SQL': '#f59e0b', 'System Design': '#ef4444' };
+  const weakHTML = (student.weakAreas || []).slice(0,4).map(w => `
+    <div class="weak-item">
+      <div class="weak-dot" style="background:${weakColors[w]||'#f97316'}"></div>
+      <span style="font-size:.875rem;font-weight:600">${w}</span>
+      <span class="badge badge-warning" style="margin-left:auto">Needs Work</span>
+    </div>`).join('');
+
+  const tasksHTML = [
+    { done: true, text: 'Complete Daily Mock Test' },
+    { done: false, text: 'Complete AI Voice Interview' },
+    { done: false, text: 'Review Weak Skills' },
+    { done: false, text: 'Complete Recommended Learning' },
+  ].map(t => `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f1f5f9">
+    <span style="font-size:1.1rem">${t.done ? '✅' : '⬜'}</span>
+    <span style="font-size:.875rem;${t.done ? 'text-decoration:line-through;color:#94a3b8' : ''}">${t.text}</span>
+    ${!t.done ? '<a href="student-mocktest.html" style="margin-left:auto;font-size:.75rem;color:#6366f1;font-weight:600">Start →</a>' : ''}
+  </div>`).join('');
+
+  document.getElementById('dash-content').innerHTML = `
+    <div style="margin-bottom:24px">
+      <h2 style="font-size:1.5rem;font-weight:800">Welcome back, ${student.name.split(' ')[0]} 👋</h2>
+      <p class="text-muted">Here's your career progress overview</p>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#ede9fe">${progressRing(student.careerScore, 48, 5)}</div>
+        <div class="stat-info">
+          <div class="value" id="career-count">${student.careerScore}%</div>
+          <div class="label">Career Readiness</div>
+          <div class="change change-up">↑ 4% this week</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#dbeafe;font-size:1.6rem">📝</div>
+        <div class="stat-info">
+          <div class="value">${student.testHistory?.[0]?.score || 0}%</div>
+          <div class="label">Last Mock Test</div>
+          <div class="change change-up">↑ 6% from last</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#d1fae5;font-size:1.6rem">🎙️</div>
+        <div class="stat-info">
+          <div class="value">${student.interviewScore}%</div>
+          <div class="label">Interview Score</div>
+          <div class="change change-up">↑ 2% this week</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#fef3c7;font-size:1.6rem">⚡</div>
+        <div class="stat-info">
+          <div class="value">${student.technicalScore}%</div>
+          <div class="label">Technical Skills</div>
+          <div class="change change-up">↑ 3% this week</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-2" style="margin-bottom:20px">
+      <div class="card">
+        <div class="card-header"><span class="card-title">📈 Career Readiness Trend</span><span class="badge badge-success">This Week</span></div>
+        <div class="chart-area" style="height:160px">${barsHTML}</div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">🎯 Score Breakdown</span></div>
+        <div style="display:flex;flex-wrap:wrap;gap:16px;justify-content:center;padding:8px 0">
+          <div class="score-ring">${progressRing(student.technicalScore, 70, 7)}<span class="label">Technical</span></div>
+          <div class="score-ring">${progressRing(student.aptitudeScore, 70, 7)}<span class="label">Aptitude</span></div>
+          <div class="score-ring">${progressRing(student.communicationScore, 70, 7)}<span class="label">Communication</span></div>
+          <div class="score-ring">${progressRing(student.problemSolvingScore, 70, 7)}<span class="label">Problem Solving</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-2" style="margin-bottom:20px">
+      <div class="card">
+        <div class="card-header"><span class="card-title">✅ Today's Tasks</span><span class="badge badge-info">4 tasks</span></div>
+        ${tasksHTML}
+        <div style="margin-top:12px;display:flex;gap:8px">
+          <a href="student-mocktest.html" class="btn btn-primary btn-sm">Start Mock Test</a>
+          <a href="student-interview.html" class="btn btn-outline btn-sm">Start Interview</a>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">⚠️ Weak Areas</span></div>
+        ${weakHTML || '<div class="empty-state"><p>No weak areas! Keep it up 🎉</p></div>'}
+        <a href="student-learning.html" class="btn btn-outline btn-sm" style="margin-top:12px">View Learning Plan →</a>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header"><span class="card-title">🤖 AI Recommendation</span></div>
+        <div class="ai-box">
+          <div class="ai-box-title">🧠 AI Analysis</div>
+          <p style="font-size:.875rem;color:#374151;margin-bottom:10px">Your communication score has decreased this week. Here's your personalized plan:</p>
+          <div style="font-size:.85rem;color:#374151">
+            <div style="margin-bottom:6px">📌 Practice 10 communication questions</div>
+            <div style="margin-bottom:6px">🎙️ Complete 1 voice interview today</div>
+            <div>📚 15 minutes speaking practice</div>
+          </div>
+        </div>
+        <a href="student-learning.html" class="btn btn-primary btn-sm" style="margin-top:12px">View Full Plan →</a>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">📋 Recent Activity</span></div>
+        ${[
+          { icon: '📝', text: 'Mock Test completed', score: '82%', time: 'Today' },
+          { icon: '🎙️', text: 'HR Interview completed', score: '76%', time: 'Yesterday' },
+          { icon: '💼', text: 'Applied to TechNova Internship', score: '', time: '2 days ago' },
+          { icon: '📚', text: 'Completed React course module', score: '', time: '3 days ago' },
+        ].map(a => `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f1f5f9">
+          <span style="font-size:1.2rem">${a.icon}</span>
+          <div style="flex:1"><div style="font-size:.875rem;font-weight:600">${a.text}</div><div style="font-size:.75rem;color:#94a3b8">${a.time}</div></div>
+          ${a.score ? `<span class="badge badge-success">${a.score}</span>` : ''}
+        </div>`).join('')}
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:20px;background:linear-gradient(135deg,#1e1b4b,#312e81);color:#fff">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+        <div>
+          <div style="font-size:1.1rem;font-weight:800;margin-bottom:4px">🎙️ Today's Interview Practice</div>
+          <div style="opacity:.8;font-size:.9rem">Complete today's interview to maintain your practice streak</div>
+          <div class="streak-badge" style="margin-top:10px">🔥 ${student.streak} Day Streak</div>
+        </div>
+        <a href="student-interview.html" class="btn btn-accent btn-lg">Start Voice Interview →</a>
+      </div>
+    </div>`;
+}
+
+renderDashboard();
+</script>
+</body>
+</html>

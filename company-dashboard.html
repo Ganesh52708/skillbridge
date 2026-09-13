@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Company Dashboard — SkillBridge AI</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<script src="data.js"></script>
+<script src="layout.js"></script>
+<script>
+const company = buildCompanyLayout('Dashboard', 'dashboard', '<div id="co-dash"></div>');
+
+function renderDashboard() {
+  const apps = Storage.getApplications().filter(a => a.companyId === company.id);
+  const opps = Storage.getOpportunities().filter(o => o.companyId === company.id);
+  const students = Storage.getStudents();
+  const shortlisted = apps.filter(a => a.status === 'Shortlisted' || a.status === 'Interview' || a.status === 'Selected');
+
+  const recentApps = apps.slice(0,5).map(a => {
+    const s = students.find(x => x.id === a.studentId) || {};
+    const o = Storage.getOpportunities().find(x => x.id === a.opportunityId) || {};
+    return { ...a, student: s, opp: o };
+  });
+
+  // Top candidates by skill match
+  const topCandidates = [...apps].sort((a,b) => b.skillMatch - a.skillMatch).slice(0,5).map(a => {
+    const s = students.find(x => x.id === a.studentId) || {};
+    return { ...a, student: s };
+  });
+
+  document.getElementById('co-dash').innerHTML = `
+    <div style="margin-bottom:24px">
+      <h2 style="font-size:1.5rem;font-weight:800">Welcome back, ${company.name} ${company.logo||'🏢'}</h2>
+      <p class="text-muted">Here's your recruitment overview</p>
+    </div>
+
+    <div class="stats-grid" style="margin-bottom:24px">
+      ${[
+        ['💼',opps.filter(o=>o.type==='job').length,'Jobs Posted','#ede9fe'],
+        ['🎓',opps.filter(o=>o.type==='internship').length,'Active Internships','#dbeafe'],
+        ['📋',apps.length,'Total Applications','#d1fae5'],
+        ['⭐',shortlisted.length,'Shortlisted','#fef3c7'],
+        ['✅',company.hired||0,'Hired','#f0fdf4'],
+      ].map(([i,v,l,bg])=>`<div class="stat-card"><div class="stat-icon" style="background:${bg};font-size:1.4rem">${i}</div><div class="stat-info"><div class="value">${v}</div><div class="label">${l}</div></div></div>`).join('')}
+    </div>
+
+    <div class="grid-2" style="margin-bottom:20px">
+      <div class="card">
+        <div class="card-header"><span class="card-title">🤖 AI Top Candidates</span><a href="company-applications.html" class="btn btn-ghost btn-sm">View All →</a></div>
+        ${topCandidates.length ? topCandidates.map(a=>`<div class="candidate-card" onclick="window.location.href='company-applications.html'">
+          <div class="candidate-avatar">${a.student.avatar||'👤'}</div>
+          <div class="candidate-info">
+            <div class="candidate-name">${a.student.name||'Student'}</div>
+            <div class="candidate-meta">${a.student.course||''} • ${a.student.college||''}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-weight:800;color:${scoreColor(a.skillMatch)}">${a.skillMatch}%</div>
+            <div style="font-size:.75rem;color:#64748b">Match</div>
+          </div>
+        </div>`).join('') : `<div class="empty-state"><p>No applications yet</p></div>`}
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">📋 Recent Applications</span></div>
+        ${recentApps.length ? recentApps.map(a=>`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f1f5f9">
+          <div style="font-size:1.3rem">${a.student.avatar||'👤'}</div>
+          <div style="flex:1">
+            <div style="font-weight:600;font-size:.875rem">${a.student.name||'Student'}</div>
+            <div style="font-size:.75rem;color:#64748b">${a.opp.title||'Role'}</div>
+          </div>
+          <span class="badge ${statusBadge(a.status)}">${a.status}</span>
+        </div>`).join('') : `<div class="empty-state"><p>No applications yet</p></div>`}
+        <a href="company-applications.html" class="btn btn-outline btn-sm" style="margin-top:12px">View All Applications →</a>
+      </div>
+    </div>
+
+    <div class="grid-2" style="margin-bottom:20px">
+      <div class="card">
+        <div class="card-header"><span class="card-title">💼 Active Opportunities</span><a href="company-post.html" class="btn btn-primary btn-sm">+ Post New</a></div>
+        ${opps.length ? opps.map(o=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f1f5f9">
+          <div style="font-size:1.3rem">${o.logo}</div>
+          <div style="flex:1">
+            <div style="font-weight:600;font-size:.875rem">${o.title}</div>
+            <div style="font-size:.75rem;color:#64748b">${o.location} • ${o.type==='internship'?o.stipend:o.salary}</div>
+          </div>
+          <span class="badge ${o.type==='internship'?'badge-purple':'badge-info'}">${o.type}</span>
+        </div>`).join('') : `<div class="empty-state"><p>No opportunities posted</p><a href="company-post.html" class="btn btn-primary btn-sm" style="margin-top:8px">Post First Job</a></div>`}
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">📊 Quick Stats</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          ${[
+            ['Avg Skill Match','84%','↑ 3% this month'],
+            ['Avg Career Score','81%','↑ 2% this month'],
+            ['Response Rate','92%','Applications reviewed'],
+            ['Time to Hire','12 days','Average'],
+          ].map(([l,v,s])=>`<div class="card" style="padding:14px;text-align:center">
+            <div style="font-size:1.3rem;font-weight:800;color:#6366f1">${v}</div>
+            <div style="font-size:.8rem;font-weight:600;margin-bottom:2px">${l}</div>
+            <div style="font-size:.72rem;color:#64748b">${s}</div>
+          </div>`).join('')}
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="background:linear-gradient(135deg,#1e1b4b,#312e81);color:#fff">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+        <div>
+          <div style="font-size:1.1rem;font-weight:800;margin-bottom:4px">🤖 AI Candidate Matching Active</div>
+          <div style="opacity:.8;font-size:.9rem">AI is continuously matching students to your open positions</div>
+        </div>
+        <a href="company-candidates.html" class="btn btn-accent">View Candidate Database →</a>
+      </div>
+    </div>`;
+}
+
+renderDashboard();
+</script>
+</body>
+</html>

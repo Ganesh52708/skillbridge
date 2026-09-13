@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Applications — SkillBridge AI</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<script src="data.js"></script>
+<script src="layout.js"></script>
+<script>
+const company = buildCompanyLayout('Applications', 'applications', '<div id="apps-content"></div>');
+let selectedOpp = null;
+let sortBy = 'skillMatch';
+
+function renderApplications() {
+  const opps = Storage.getOpportunities().filter(o => o.companyId === company.id);
+  const allApps = Storage.getApplications().filter(a => a.companyId === company.id);
+  const students = Storage.getStudents();
+
+  if (!selectedOpp && opps.length > 0) selectedOpp = opps[0].id;
+
+  const oppApps = allApps.filter(a => a.opportunityId === selectedOpp);
+  const enriched = oppApps.map(a => ({ ...a, student: students.find(s => s.id === a.studentId) || {} }))
+    .sort((a,b) => b[sortBy] - a[sortBy]);
+
+  document.getElementById('apps-content').innerHTML = `
+    <div class="grid-2" style="align-items:start">
+      <div>
+        <div class="section-title">Opportunities</div>
+        ${opps.length ? opps.map(o=>{
+          const count = allApps.filter(a=>a.opportunityId===o.id).length;
+          return `<div class="card" style="cursor:pointer;border:2px solid ${selectedOpp===o.id?'#6366f1':'transparent'};margin-bottom:10px" onclick="selectedOpp='${o.id}';renderApplications()">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="font-size:1.5rem">${o.logo}</div>
+              <div style="flex:1">
+                <div style="font-weight:700;font-size:.9rem">${o.title}</div>
+                <div class="text-muted text-sm">${o.location} • ${o.type}</div>
+              </div>
+              <span class="badge badge-info">${count} apps</span>
+            </div>
+          </div>`;
+        }).join('') : `<div class="empty-state"><p>No opportunities posted</p><a href="company-post.html" class="btn btn-primary btn-sm" style="margin-top:8px">Post First Job</a></div>`}
+      </div>
+      <div>
+        ${selectedOpp ? `
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+            <div class="section-title" style="margin-bottom:0">Applicants (${enriched.length})</div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <span class="text-sm text-muted">Sort by:</span>
+              <select class="form-control form-select" style="width:140px" onchange="sortBy=this.value;renderApplications()">
+                <option value="skillMatch">Skill Match</option>
+                <option value="careerScore">Career Score</option>
+                <option value="testScore">Test Score</option>
+                <option value="interviewScore">Interview Score</option>
+              </select>
+            </div>
+          </div>
+          ${enriched.length ? enriched.map((a,i)=>`<div class="card" style="margin-bottom:10px;cursor:pointer" onclick="viewCandidate('${a.studentId}','${a.id}')">
+            <div style="display:flex;align-items:center;gap:12px">
+              <div style="font-size:1.2rem;font-weight:800;color:#94a3b8;min-width:24px">#${i+1}</div>
+              <div class="candidate-avatar">${a.student.avatar||'👤'}</div>
+              <div style="flex:1">
+                <div style="font-weight:700">${a.student.name||'Student'}</div>
+                <div class="text-muted text-sm">${a.student.course||''} • ${a.student.college||''}</div>
+                <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
+                  <span style="font-size:.75rem;color:#64748b">🎯 ${a.skillMatch}% match</span>
+                  <span style="font-size:.75rem;color:#64748b">📊 ${a.careerScore}% career</span>
+                  <span style="font-size:.75rem;color:#64748b">📝 ${a.testScore}% test</span>
+                  <span style="font-size:.75rem;color:#64748b">🎙️ ${a.interviewScore}% interview</span>
+                </div>
+              </div>
+              <div style="text-align:right">
+                <span class="badge ${statusBadge(a.status)}">${a.status}</span>
+                <div style="display:flex;gap:4px;margin-top:6px">
+                  <button class="btn btn-success btn-sm" onclick="event.stopPropagation();updateStatus('${a.id}','Shortlisted')">⭐</button>
+                  <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();updateStatus('${a.id}','Rejected')">✕</button>
+                </div>
+              </div>
+            </div>
+          </div>`).join('') : `<div class="empty-state"><div class="mascot">🐯</div><h3>No applications yet</h3><p>Applications will appear here when students apply</p></div>`}
+        ` : `<div class="empty-state"><p>Select an opportunity to view applications</p></div>`}
+      </div>
+    </div>`;
+}
+
+function updateStatus(appId, status) {
+  const apps = Storage.getApplications();
+  const idx = apps.findIndex(a => a.id === appId);
+  if (idx >= 0) {
+    apps[idx].status = status;
+    Storage.set('sb_applications', apps);
+    const s = Storage.getStudents().find(x => x.id === apps[idx].studentId);
+    Storage.logActivity('status_change', '⭐', `${company.name} marked ${s?.name || 'a candidate'} as ${status}`);
+  }
+  showToast(`Candidate ${status.toLowerCase()}!`);
+  renderApplications();
+}
+
+function viewCandidate(studentId, appId) {
+  const student = Storage.getStudents().find(s => s.id === studentId);
+  const app = Storage.getApplications().find(a => a.id === appId);
+  if (!student) return;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay open';
+  overlay.innerHTML = `<div class="modal" style="max-width:720px">
+    <div class="modal-header">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="font-size:2rem">${student.avatar||'👤'}</div>
+        <div>
+          <div style="font-weight:800;font-size:1.1rem">${student.name}</div>
+          <div class="text-muted text-sm">${student.course||''} • ${student.college||''} • ${student.location||''}</div>
+        </div>
+      </div>
+      <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="grid-2" style="margin-bottom:16px">
+        ${[['🎯 Skill Match',app?.skillMatch+'%'],['📊 Career Score',app?.careerScore+'%'],['📝 Test Score',app?.testScore+'%'],['🎙️ Interview',app?.interviewScore+'%']].map(([l,v])=>`<div class="card" style="text-align:center;padding:12px"><div style="font-size:1.2rem;font-weight:800;color:#6366f1">${v}</div><div class="text-muted text-sm">${l}</div></div>`).join('')}
+      </div>
+      <div style="margin-bottom:12px">
+        <div style="font-weight:700;margin-bottom:8px">📊 Detailed Scores</div>
+        ${[['Technical',student.technicalScore],['Aptitude',student.aptitudeScore],['Communication',student.communicationScore],['Problem Solving',student.problemSolvingScore],['Interview',student.interviewScore]].map(([l,v])=>`<div style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;margin-bottom:3px"><span class="text-sm">${l}</span><span style="font-size:.8rem;font-weight:700;color:${scoreColor(v)}">${v}%</span></div><div class="progress-bar"><div class="progress-fill" style="width:${v}%;background:${scoreColor(v)}"></div></div></div>`).join('')}
+      </div>
+      <div class="grid-2" style="margin-bottom:12px">
+        <div>
+          <div style="font-weight:700;margin-bottom:6px">🎓 Education</div>
+          <div style="font-size:.875rem;color:#374151">${student.college||'N/A'}<br>${student.course||''} • ${student.branch||''}<br>CGPA: ${student.cgpa||'N/A'} • ${student.year||''}</div>
+        </div>
+        <div>
+          <div style="font-weight:700;margin-bottom:6px">⚡ Skills</div>
+          <div>${(student.skills||[]).map(s=>`<span class="skill-tag">${s}</span>`).join('')||'None'}</div>
+        </div>
+      </div>
+      ${(student.projects||[]).length ? `<div style="margin-bottom:12px"><div style="font-weight:700;margin-bottom:6px">🚀 Projects</div>${student.projects.map(p=>`<div style="font-size:.875rem;padding:6px 0;border-bottom:1px solid #f1f5f9"><strong>${p.name}</strong> — ${p.desc}<br><span class="text-muted text-sm">${p.tech}</span></div>`).join('')}</div>` : ''}
+      ${(student.certifications||[]).length ? `<div><div style="font-weight:700;margin-bottom:6px">🏆 Certifications</div>${student.certifications.map(c=>`<div style="font-size:.875rem;padding:3px 0">✓ ${c}</div>`).join('')}</div>` : ''}
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="this.closest('.modal-overlay').remove()">Close</button>
+      <button class="btn btn-danger" onclick="updateStatus('${appId}','Rejected');this.closest('.modal-overlay').remove()">Reject</button>
+      <button class="btn btn-outline" onclick="updateStatus('${appId}','Interview');this.closest('.modal-overlay').remove()">Move to Interview</button>
+      <button class="btn btn-success" onclick="updateStatus('${appId}','Shortlisted');this.closest('.modal-overlay').remove()">⭐ Shortlist</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+}
+
+renderApplications();
+</script>
+</body>
+</html>

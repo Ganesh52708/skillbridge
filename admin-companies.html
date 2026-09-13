@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Companies — Admin — SkillBridge AI</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<script src="data.js"></script>
+<script src="layout.js"></script>
+<script>
+const admin = buildAdminLayout('Companies', 'companies', '<div id="admin-companies"></div>');
+let searchQ = '';
+
+function renderCompanies() {
+  const companies = Storage.getCompanies();
+  const opps = Storage.getOpportunities();
+  const apps = Storage.getApplications();
+  const filtered = companies.filter(c => !searchQ || c.name.toLowerCase().includes(searchQ) || (c.industry||'').toLowerCase().includes(searchQ) || (c.location||'').toLowerCase().includes(searchQ));
+
+  document.getElementById('admin-companies').innerHTML = `
+    <div style="margin-bottom:20px">
+      <h2 style="font-size:1.5rem;font-weight:800">🏢 All Companies</h2>
+      <p class="text-muted">${companies.length} registered companies</p>
+    </div>
+    <div class="search-bar" style="margin-bottom:16px">
+      <input class="form-control" placeholder="Search by name, industry, or location..." oninput="searchQ=this.value.toLowerCase();renderCompanies()" value="${searchQ}">
+    </div>
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Company</th><th>Industry</th><th>Location</th><th>Posted</th><th>Applications</th><th>Shortlisted</th><th>Hired</th><th></th></tr></thead>
+          <tbody>
+            ${filtered.map(c => {
+              const postedCount = opps.filter(o => o.companyId === c.id).length;
+              const appCount = apps.filter(a => a.companyId === c.id).length;
+              const shortlistedCount = apps.filter(a => a.companyId === c.id && ['Shortlisted','Interview','Selected','Hired'].includes(a.status)).length;
+              return `<tr>
+                <td><div style="display:flex;align-items:center;gap:8px"><span style="font-size:1.3rem">${c.logo||'🏢'}</span><div><div style="font-weight:700">${c.name}</div><div style="font-size:.75rem;color:#64748b">${c.email}</div></div></div></td>
+                <td>${c.industry||'—'}</td>
+                <td>${c.location||'—'}</td>
+                <td>${postedCount}</td>
+                <td>${appCount}</td>
+                <td>${shortlistedCount}</td>
+                <td>${c.hired||0}</td>
+                <td><button class="btn btn-ghost btn-sm" onclick="viewCompany('${c.id}')">View →</button></td>
+              </tr>`;
+            }).join('') || `<tr><td colspan="8"><div class="empty-state"><p>No companies match your search</p></div></td></tr>`}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+function viewCompany(id) {
+  const c = Storage.getCompanies().find(x => x.id === id);
+  const opps = Storage.getOpportunities().filter(o => o.companyId === id);
+  if (!c) return;
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `<div class="modal" style="max-width:600px">
+    <div class="modal-header"><span>${c.logo||'🏢'} ${c.name}</span><span class="modal-close" onclick="this.closest('.modal-overlay').remove()">✕</span></div>
+    <div class="modal-body">
+      <div class="info-grid" style="margin-bottom:16px">
+        <div class="info-item"><div class="key">Email</div>${c.email}</div>
+        <div class="info-item"><div class="key">Phone</div>${c.phone||'—'}</div>
+        <div class="info-item"><div class="key">Industry</div>${c.industry||'—'}</div>
+        <div class="info-item"><div class="key">Size</div>${c.size||'—'}</div>
+        <div class="info-item"><div class="key">Location</div>${c.location||'—'}</div>
+        <div class="info-item"><div class="key">Recruiter</div>${c.recruiter||'—'}</div>
+      </div>
+      <p class="text-muted text-sm" style="margin-bottom:16px">${c.description||'No description provided.'}</p>
+      <div class="section-title">Posted Opportunities (${opps.length})</div>
+      ${opps.length ? opps.map(o => `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9"><span>${o.title} <span class="text-muted text-sm">${o.location}</span></span><span class="badge ${o.type==='internship'?'badge-purple':'badge-info'}">${o.type}</span></div>`).join('') : '<p class="text-muted text-sm">No opportunities posted yet</p>'}
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+}
+
+renderCompanies();
+</script>
+</body>
+</html>

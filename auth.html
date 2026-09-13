@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SkillBridge AI — Login / Register</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+  body { background: linear-gradient(135deg, #1e1b4b 0%, #312e81 60%, #4c1d95 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .auth-container { background: #fff; border-radius: 20px; overflow: hidden; width: 100%; max-width: 900px; display: grid; grid-template-columns: 1fr 1fr; box-shadow: 0 25px 60px rgba(0,0,0,.3); }
+  .auth-left { background: linear-gradient(135deg, #6366f1, #8b5cf6); padding: 48px 40px; color: #fff; display: flex; flex-direction: column; justify-content: center; }
+  .auth-left .brand { font-size: 1.6rem; font-weight: 900; margin-bottom: 8px; }
+  .auth-left .tagline { opacity: .8; font-size: .9rem; margin-bottom: 40px; }
+  .auth-left h2 { font-size: 1.8rem; font-weight: 800; margin-bottom: 12px; }
+  .auth-left p { opacity: .85; line-height: 1.7; margin-bottom: 32px; }
+  .auth-feature { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; font-size: .9rem; }
+  .auth-right { padding: 40px; overflow-y: auto; max-height: 90vh; }
+  .auth-tabs { display: flex; gap: 4px; background: #f1f5f9; padding: 4px; border-radius: 10px; margin-bottom: 28px; }
+  .auth-tab { flex: 1; padding: 10px; text-align: center; border-radius: 8px; font-weight: 600; font-size: .9rem; cursor: pointer; transition: all .2s; border: none; background: none; color: #64748b; }
+  .auth-tab.active { background: #fff; color: #6366f1; box-shadow: 0 2px 8px rgba(0,0,0,.1); }
+  .role-selector { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 24px; }
+  .role-btn { padding: 14px 8px; border: 2px solid #e2e8f0; border-radius: 12px; text-align: center; cursor: pointer; transition: all .2s; background: #fff; }
+  .role-btn:hover { border-color: #6366f1; }
+  .role-btn.active { border-color: #6366f1; background: #ede9fe; }
+  .role-btn .icon { font-size: 1.6rem; margin-bottom: 6px; }
+  .role-btn .name { font-weight: 700; font-size: .85rem; }
+  .demo-btns { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 16px; }
+  .demo-btn { padding: 10px; border: 2px dashed #e2e8f0; border-radius: 10px; text-align: center; cursor: pointer; transition: all .2s; background: #f8fafc; font-size: .85rem; }
+  .demo-btn:hover { border-color: #6366f1; background: #ede9fe; }
+  .divider-text { text-align: center; color: #94a3b8; font-size: .85rem; margin: 16px 0; position: relative; }
+  .divider-text::before, .divider-text::after { content: ''; position: absolute; top: 50%; width: 40%; height: 1px; background: #e2e8f0; }
+  .divider-text::before { left: 0; }
+  .divider-text::after { right: 0; }
+  @media (max-width: 640px) { .auth-container { grid-template-columns: 1fr; } .auth-left { display: none; } }
+</style>
+</head>
+<body>
+<div class="auth-container">
+  <div class="auth-left">
+    <div class="brand">🐯 SkillBridge AI</div>
+    <div class="tagline">Learn • Improve • Get Placed</div>
+    <h2>Your Career Journey Starts Here</h2>
+    <p>Join thousands of students who are building their careers with AI-powered skill development and placement.</p>
+    <div class="auth-feature">✅ AI-powered skill gap analysis</div>
+    <div class="auth-feature">✅ Daily mock tests & voice interviews</div>
+    <div class="auth-feature">✅ Dynamic Career Readiness Score</div>
+    <div class="auth-feature">✅ Smart internship & job matching</div>
+    <div class="auth-feature">✅ Digital Skill Passport</div>
+  </div>
+  <div class="auth-right">
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchTab('login')">Login</button>
+      <button class="auth-tab" onclick="switchTab('register')">Register</button>
+    </div>
+
+    <!-- Role selector -->
+    <div class="role-selector">
+      <div class="role-btn active" id="role-student" onclick="selectRole('student')">
+        <div class="icon">🎓</div>
+        <div class="name">Student</div>
+      </div>
+      <div class="role-btn" id="role-company" onclick="selectRole('company')">
+        <div class="icon">🏢</div>
+        <div class="name">Company</div>
+      </div>
+      <div class="role-btn" id="role-admin" onclick="selectRole('admin')">
+        <div class="icon">🛡️</div>
+        <div class="name">Admin</div>
+      </div>
+    </div>
+
+    <!-- Login Form -->
+    <div id="login-form">
+      <div class="form-group">
+        <label class="form-label">Email Address</label>
+        <input type="email" class="form-control" id="login-email" placeholder="Enter your email">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input type="password" class="form-control" id="login-password" placeholder="Enter your password">
+      </div>
+      <button class="btn btn-primary btn-block btn-lg" onclick="doLogin()" style="margin-top:8px">Login →</button>
+      <div class="divider-text">or try demo</div>
+      <div class="demo-btns">
+        <div class="demo-btn" onclick="Auth.demoStudent()">
+          <div>👨💻</div><div style="font-weight:700">Rahul Sharma</div><div style="color:#64748b">Student Demo</div>
+        </div>
+        <div class="demo-btn" onclick="Auth.demoCompany()">
+          <div>🚀</div><div style="font-weight:700">TechNova</div><div style="color:#64748b">Company Demo</div>
+        </div>
+        <div class="demo-btn" onclick="Auth.demoAdmin()">
+          <div>🛡️</div><div style="font-weight:700">Admin</div><div style="color:#64748b">Admin Demo</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Register Form -->
+    <div id="register-form" style="display:none">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Full Name</label>
+          <input type="text" class="form-control" id="reg-name" placeholder="Your full name">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input type="email" class="form-control" id="reg-email" placeholder="Email address">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Mobile Number</label>
+          <input type="tel" class="form-control" id="reg-phone" placeholder="10-digit mobile">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input type="password" class="form-control" id="reg-password" placeholder="Create password">
+        </div>
+      </div>
+      <div id="company-extra" style="display:none">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Company Name</label>
+            <input type="text" class="form-control" id="reg-company" placeholder="Company name">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Industry</label>
+            <input type="text" class="form-control" id="reg-industry" placeholder="e.g. Software">
+          </div>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-block btn-lg" onclick="doRegister()" style="margin-top:8px">Create Account →</button>
+    </div>
+  </div>
+</div>
+
+<script src="data.js"></script>
+<script>
+let currentRole = 'student';
+const params = new URLSearchParams(location.search);
+if (params.get('type') === 'company') selectRole('company');
+if (params.get('type') === 'admin') selectRole('admin');
+
+function switchTab(tab) {
+  document.querySelectorAll('.auth-tab').forEach((t,i) => t.classList.toggle('active', (i===0&&tab==='login')||(i===1&&tab==='register')));
+  document.getElementById('login-form').style.display = tab === 'login' ? 'block' : 'none';
+  document.getElementById('register-form').style.display = tab === 'register' ? 'block' : 'none';
+}
+
+function selectRole(role) {
+  currentRole = role;
+  document.getElementById('role-student').classList.toggle('active', role === 'student');
+  document.getElementById('role-company').classList.toggle('active', role === 'company');
+  document.getElementById('role-admin').classList.toggle('active', role === 'admin');
+  document.getElementById('company-extra').style.display = role === 'company' ? 'block' : 'none';
+  // Admins are pre-provisioned, not self-registered — lock them to the Login tab
+  document.querySelectorAll('.auth-tab')[1].style.opacity = role === 'admin' ? '.4' : '1';
+  document.querySelectorAll('.auth-tab')[1].style.pointerEvents = role === 'admin' ? 'none' : 'auto';
+  if (role === 'admin') switchTab('login');
+  document.getElementById('login-email').placeholder = role === 'admin' ? 'admin@skillbridge.com' : 'Enter your email';
+}
+
+function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const pass = document.getElementById('login-password').value;
+  if (!email || !pass) { showToast('Please fill all fields', 'error'); return; }
+  if (currentRole === 'student') {
+    const s = Auth.loginStudent(email, pass);
+    if (s) { Storage.logActivity('login', '🔑', `${s.name} logged in`); showToast('Welcome back, ' + s.name + '!'); setTimeout(() => window.location.href = 'student-dashboard.html', 800); }
+    else showToast('Invalid credentials. Try rahul@demo.com / demo123', 'error');
+  } else if (currentRole === 'company') {
+    const c = Auth.loginCompany(email, pass);
+    if (c) { Storage.logActivity('login', '🔑', `${c.name} logged in`); showToast('Welcome, ' + c.name + '!'); setTimeout(() => window.location.href = 'company-dashboard.html', 800); }
+    else showToast('Invalid credentials. Try hr@technova.com / demo123', 'error');
+  } else {
+    const a = Auth.loginAdmin(email, pass);
+    if (a) { Storage.logActivity('login', '🔑', `${a.name} logged in`); showToast('Welcome, ' + a.name + '!'); setTimeout(() => window.location.href = 'admin-dashboard.html', 800); }
+    else showToast('Invalid credentials. Try admin@skillbridge.com / admin123', 'error');
+  }
+}
+
+function doRegister() {
+  if (currentRole === 'admin') { showToast('Admin accounts are pre-provisioned and cannot self-register', 'error'); return; }
+  const name = document.getElementById('reg-name').value.trim();
+  const email = document.getElementById('reg-email').value.trim();
+  const phone = document.getElementById('reg-phone').value.trim();
+  const pass = document.getElementById('reg-password').value;
+  if (!name || !email || !phone || !pass) { showToast('Please fill all fields', 'error'); return; }
+  if (currentRole === 'student') {
+    const students = Storage.getStudents();
+    if (students.find(s => s.email === email)) { showToast('Email already registered', 'error'); return; }
+    const newStudent = { id: 's' + Date.now(), name, email, phone, password: pass, careerScore: 50, technicalScore: 50, aptitudeScore: 50, communicationScore: 50, problemSolvingScore: 50, interviewScore: 50, skills: [], languages: [], softSkills: [], projects: [], certifications: [], testHistory: [], interviewHistory: [], streak: 0, avatar: '👤', profileCompletion: 30, weakAreas: [], scoreHistory: [50], college: '', course: '', year: '', onboardingComplete: false };
+    students.push(newStudent);
+    Storage.set('sb_students', students);
+    Storage.setCurrentUser({ type: 'student', id: newStudent.id });
+    Storage.logActivity('registration', '🎓', `New student registered: ${newStudent.name}`);
+    showToast('Account created! Let\'s set up your profile.');
+    setTimeout(() => window.location.href = 'student-onboarding.html', 800);
+  } else {
+    const companies = Storage.getCompanies();
+    const compName = document.getElementById('reg-company').value.trim() || name;
+    const newCo = { id: 'c' + Date.now(), name: compName, email, phone, password: pass, industry: document.getElementById('reg-industry').value || 'Technology', location: '', logo: '🏢', totalApplications: 0, shortlisted: 0, hired: 0 };
+    companies.push(newCo);
+    Storage.set('sb_companies', companies);
+    Storage.setCurrentUser({ type: 'company', id: newCo.id });
+    Storage.logActivity('registration', '🏢', `New company registered: ${newCo.name}`);
+    showToast('Company registered!');
+    setTimeout(() => window.location.href = 'company-dashboard.html', 800);
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Dashboard — SkillBridge AI</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<script src="data.js"></script>
+<script src="layout.js"></script>
+<script>
+const admin = buildAdminLayout('Dashboard', 'dashboard', '<div id="admin-dash"></div>');
+
+function timeAgo(iso) {
+  const diff = Math.max(0, Date.now() - new Date(iso).getTime());
+  const mins = Math.round(diff / 60000);
+  if (mins < 60) return mins <= 1 ? 'just now' : mins + ' min ago';
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return hrs + ' hr ago';
+  return Math.round(hrs / 24) + ' day(s) ago';
+}
+
+function renderDashboard() {
+  const students = Storage.getStudents();
+  const companies = Storage.getCompanies();
+  const opps = Storage.getOpportunities();
+  const apps = Storage.getApplications();
+  const log = Storage.getActivityLog();
+
+  const hired = apps.filter(a => a.status === 'Hired' || a.status === 'Selected').length;
+  const avgCareer = students.length ? Math.round(students.reduce((s,x) => s + (x.careerScore||0), 0) / students.length) : 0;
+
+  const topStudents = [...students].sort((a,b) => (b.careerScore||0) - (a.careerScore||0)).slice(0,5);
+  const topCompanies = [...companies].map(c => ({ ...c, appCount: apps.filter(a=>a.companyId===c.id).length }))
+    .sort((a,b) => b.appCount - a.appCount).slice(0,5);
+
+  document.getElementById('admin-dash').innerHTML = `
+    <div style="margin-bottom:24px">
+      <h2 style="font-size:1.5rem;font-weight:800">Platform Overview 🛡️</h2>
+      <p class="text-muted">Live activity across all students and companies</p>
+    </div>
+
+    <div class="stats-grid" style="margin-bottom:24px">
+      ${[
+        ['🎓',students.length,'Total Students','#dbeafe'],
+        ['🏢',companies.length,'Total Companies','#ede9fe'],
+        ['💼',opps.length,'Jobs/Internships Posted','#fef3c7'],
+        ['📋',apps.length,'Total Applications','#d1fae5'],
+        ['✅',hired,'Selected / Hired','#f0fdf4'],
+      ].map(([i,v,l,bg])=>`<div class="stat-card"><div class="stat-icon" style="background:${bg};font-size:1.4rem">${i}</div><div class="stat-info"><div class="value">${v}</div><div class="label">${l}</div></div></div>`).join('')}
+    </div>
+
+    <div class="grid-2" style="margin-bottom:20px">
+      <div class="card">
+        <div class="card-header"><span class="card-title">📜 Live Activity Feed</span><a href="admin-activity.html" class="btn btn-ghost btn-sm">View All →</a></div>
+        <div style="max-height:420px;overflow-y:auto">
+        ${log.slice(0,10).map(a=>`<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid #f1f5f9">
+          <div style="font-size:1.2rem">${a.icon}</div>
+          <div style="flex:1">
+            <div style="font-size:.85rem;font-weight:600">${a.message}</div>
+            <div style="font-size:.72rem;color:#94a3b8">${timeAgo(a.time)}</div>
+          </div>
+        </div>`).join('')}
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="card-title">🏆 Top Students by Career Score</span><a href="admin-students.html" class="btn btn-ghost btn-sm">View All →</a></div>
+        ${topStudents.map(s=>`<div class="candidate-card" onclick="window.location.href='admin-students.html'">
+          <div class="candidate-avatar">${s.avatar||'👤'}</div>
+          <div class="candidate-info">
+            <div class="candidate-name">${s.name}</div>
+            <div class="candidate-meta">${s.course||''} • ${s.college||''}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-weight:800;color:${scoreColor(s.careerScore||0)}">${s.careerScore||0}%</div>
+            <div style="font-size:.75rem;color:#64748b">Career Score</div>
+          </div>
+        </div>`).join('')}
+        <div style="margin-top:16px;padding-top:12px;border-top:1px solid #f1f5f9;text-align:center">
+          <div style="font-size:1.2rem;font-weight:800;color:#6366f1">${avgCareer}%</div>
+          <div style="font-size:.8rem;color:#64748b">Platform Average Career Score</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><span class="card-title">🏢 Companies by Application Volume</span><a href="admin-companies.html" class="btn btn-ghost btn-sm">View All →</a></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Company</th><th>Industry</th><th>Location</th><th>Applications</th><th>Hired</th></tr></thead>
+          <tbody>
+            ${topCompanies.map(c=>`<tr>
+              <td>${c.logo||'🏢'} ${c.name}</td>
+              <td>${c.industry||'—'}</td>
+              <td>${c.location||'—'}</td>
+              <td>${c.appCount}</td>
+              <td>${c.hired||0}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+renderDashboard();
+setInterval(renderDashboard, 15000);
+</script>
+</body>
+</html>
