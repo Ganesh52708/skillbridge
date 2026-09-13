@@ -25,6 +25,13 @@
 .proj-card:last-child{margin-bottom:0;}
 .add-btn{display:flex;align-items:center;gap:6px;padding:8px 14px;border:2px dashed #c7d2fe;border-radius:8px;background:none;color:#6366f1;font-size:.85rem;font-weight:600;cursor:pointer;width:100%;justify-content:center;margin-top:10px;transition:all .2s;}
 .add-btn:hover{background:#ede9fe;border-color:#6366f1;}
+.resume-upload{margin-top:6px;}
+.resume-upload input[type="file"]{display:none;}
+.resume-upload-label{display:flex;align-items:center;gap:10px;width:100%;padding:12px 14px;border:2px dashed #c7d2fe;border-radius:8px;background:#f8f7ff;color:#6366f1;font-size:.85rem;font-weight:700;cursor:pointer;transition:all .2s;}
+.resume-upload-label:hover{background:#ede9fe;border-color:#6366f1;}
+.resume-file-name{margin-top:7px;font-size:.8rem;color:#64748b;font-weight:600;}
+.resume-file-name a{color:#6366f1;text-decoration:none;}
+.resume-file-name a:hover{text-decoration:underline;}
 @media(max-width:640px){.info-grid{grid-template-columns:1fr;}.profile-hero{flex-direction:column;text-align:center;}}
 </style>
 </head>
@@ -207,7 +214,16 @@ function renderProfile() {
             <div class="info-item"><label>Hobbies / Interests</label>${v(s.hobbies)}</div>
             <div class="info-item"><label>Languages Known</label>${v(s.languagesKnown)}</div>
             <div class="info-item"><label>Internship Experience</label>${v(s.internshipExp)}</div>
-            <div class="info-item" style="grid-column:1/-1"><label>Resume Link / Drive URL</label>${v(s.resumeLink)}</div>
+            <div class="info-item" style="grid-column:1/-1">
+              <label>Resume / CV</label>
+              <div class="resume-upload">
+                ${s.resumeFileData && s.resumeFileName
+                  ? `<div class="resume-file-name">📄 <a href="${s.resumeFileData}" download="${s.resumeFileName}">${s.resumeFileName}</a></div>`
+                  : s.resumeLink
+                    ? `<div class="resume-file-name">🔗 <a href="${s.resumeLink}" target="_blank" rel="noopener noreferrer">${s.resumeLink}</a></div>`
+                    : '<div class="resume-file-name">No resume uploaded</div>'}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -333,7 +349,16 @@ function openEditModal() {
       </div>
       <div class="form-row">
         <div class="form-group"><label class="form-label">Hobbies / Interests</label><input class="form-control" id="e-hobbies" value="${s.hobbies||''}" placeholder="Reading, Coding..."></div>
-        <div class="form-group"><label class="form-label">Resume Link (Google Drive / URL)</label><input class="form-control" id="e-resumeLink" value="${s.resumeLink||''}" placeholder="drive.google.com/..."></div>
+        <div class="form-group">
+          <label class="form-label">Resume / CV (DOCX)</label>
+          <div class="resume-upload">
+            <input type="file" id="e-resumeFile" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onchange="handleResumeUpload(this)">
+            <label for="e-resumeFile" class="resume-upload-label">📄 Choose DOCX Resume</label>
+            <div class="resume-file-name" id="resumeFileName">
+              ${s.resumeFileName ? `Current file: ${s.resumeFileName}` : 'No file selected'}
+            </div>
+          </div>
+        </div>
       </div>
 
     </div>
@@ -343,6 +368,35 @@ function openEditModal() {
     </div>
   </div>`;
   document.body.appendChild(overlay);
+}
+
+function handleResumeUpload(input) {
+  const file = input.files[0];
+  const fileNameEl = document.getElementById('resumeFileName');
+
+  if (!file) {
+    return;
+  }
+
+  if (!file.name.toLowerCase().endsWith('.docx')) {
+    alert('Please upload a DOCX file only.');
+    input.value = '';
+    return;
+  }
+
+  if (file.size > 4 * 1024 * 1024) {
+    alert('Resume file must be smaller than 4 MB.');
+    input.value = '';
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    input.dataset.fileData = e.target.result;
+    input.dataset.fileName = file.name;
+    if (fileNameEl) fileNameEl.textContent = `Selected file: ${file.name}`;
+  };
+  reader.readAsDataURL(file);
 }
 
 function saveProfile(btn) {
@@ -355,6 +409,14 @@ function saveProfile(btn) {
       'preferredRole','preferredLocation','workMode','expectedSalary','experience','noticePeriod','internshipExp','bio',
       'achievements','languagesKnown','hobbies','resumeLink'];
     fields.forEach(f => { const el = document.getElementById('e-'+f); if(el) students[idx][f] = el.value; });
+
+    const resumeFile = document.getElementById('e-resumeFile');
+    if (resumeFile && resumeFile.dataset.fileData && resumeFile.dataset.fileName) {
+      students[idx].resumeFileData = resumeFile.dataset.fileData;
+      students[idx].resumeFileName = resumeFile.dataset.fileName;
+      students[idx].resumeLink = '';
+    }
+
     students[idx].skills = document.getElementById('e-skills').value.split(',').map(s=>s.trim()).filter(Boolean);
     students[idx].languages = document.getElementById('e-languages').value.split(',').map(s=>s.trim()).filter(Boolean);
     students[idx].frameworks = document.getElementById('e-frameworks').value.split(',').map(s=>s.trim()).filter(Boolean);
